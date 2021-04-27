@@ -67,15 +67,17 @@ df[!,"Group"] = [
         "C"  # zero cases
     end for i in 1:length(df[!,:INDEX]) ]
 
-@where(df, :Group .== "AB" ) # 526235
-@where(df, :Group .== "A" ) # 28662
+@where(df, :Group .== "AB" ) # 347339
+@where(df, :Group .== "A" ) # 207558
 @where(df, :Group .== "B" ) # 154033
+@where(df, :Group .== "C" ) # 0
 
-# writing and describing output data
-write("data/output/MCL_2020_SHOP-description.txt", df |> describe |> string)
-outfile = CSV.write("data/output/MCL_2020_SHOP.csv", df)
 
 # finding zeros in variables / possible NaN source
 sum(df[!,"2020_ANNUAL"] .== 0)
 sum(df[!,"Baseload Therms"] .== 0)
 sum(df[!,"Heating Therms"] .== 0)  # 74 found
+
+# writing and describing output data
+write("data/output/MCL_2020_SHOP-description.txt", df |> describe |> string)
+outfile = CSV.write("data/output/MCL_2020_SHOP.csv", df)

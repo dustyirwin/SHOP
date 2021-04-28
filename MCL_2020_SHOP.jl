@@ -10,7 +10,7 @@ df = CSV.File("data/input/mcl_2020.csv") |> DataFrame
 df[!,"INDEX"] .= 1:length(df[!,"GNN_ID"])
 
 # generating and writing description
-df_desc = df |> describe
+csv_desc = describe(df, :all, sum=>:sum)
 write("data/input/mcl_2020-description.txt", df_desc |> string)
 
 # renaming cols into strings from desc
@@ -79,5 +79,11 @@ sum(df[!,"Baseload Therms"] .== 0)
 sum(df[!,"Heating Therms"] .== 0)  # 74 found
 
 # writing and describing output data
-write("data/output/MCL_2020_SHOP-description.txt", df |> describe |> string)
+write("data/output/MCL_2020_SHOP-description.txt", describe(df, :all, sum=>:sum) |> string)
 outfile = CSV.write("data/output/MCL_2020_SHOP.csv", df)
+
+j = 2
+df[j, "GNN_ID"]
+df[j,"Tstat Therms Saved"]
+df[j,"WH Therms Saved"]
+

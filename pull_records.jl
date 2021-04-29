@@ -5,13 +5,15 @@ using DataFramesMeta
 
 
 # list of GNN_IDs to match against
-list = include("data/input/GNN_list.jl")
+list = include("data/input/GNN_list.jl") |> sort
 
 # SHOP csv
 SHOP_df = "data/output/MCL_2020_SHOP.csv" |> CSV.File |> DataFrame
+sort!(SHOP_df, by=x->:GNN_ID)
 
 # Full MCL csv
 MCL_df = "data/input/mcl_2020.csv" |> CSV.File |> DataFrame
+sort!(MCL_df, by=x->:GNN_ID)
 
 # matching on both datasets
 GNN_matches_SHOP = @where(SHOP_df, in.(:GNN_ID, [ list ]))

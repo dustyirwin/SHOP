@@ -4,7 +4,7 @@ using Statistics
 using CSV
 
 # loading input data
-csv_df = CSV.File("data/input/mcl_2020.csv") |> DataFrame
+csv_df = CSV.File("data/input/mcl_2020.csv", normalizenames=true) |> DataFrame
 
 old_df = CSV.File("data/input/Old_MCL.csv") |> DataFrame
 old_df = @select(old_df, :CUST_EMAIL_ADDR, :CUST_ID)  # selecting emails
@@ -12,8 +12,8 @@ old_df = coalesce.(old_df, "NA")
 old_df = @where(old_df, :CUST_EMAIL_ADDR .!= "NA")
 
 # writing input data description
-#csv_desc = describe(csv_df, :all, sum=>:sum)
-#write("data/input/mcl_2020-description.txt", csv_desc |> string)
+csv_desc = describe(csv_df, :all, sum=>:sum)
+write("data/input/mcl_2020-description.txt", csv_desc |> string)
 
 # constants 
 prob_f = 0.005

@@ -12,12 +12,14 @@ GNNs = SHOP_ledger_df[!,:project_slug]
 # loading input data
 mcl_df = CSV.File("data/input/mcl_2020.csv", normalizenames=true) |> DataFrame
 mcl_GNNs = mcl_df[!,:GNN_ID] |> unique
+mcl_df |> names |> print
 
 old_df = CSV.File("data/input/Old_MCL.csv") |> DataFrame
 old_GNNs = old_df[!,:GNN_ID] |> unique
 
 new_df = CSV.File("data/input/ICF_MCL_MAY2021.csv") |> DataFrame
 new_GNNs = new_df[!,:GNN_ID] |> unique
+new_df |> names |> print
 
 i, j, k = 0, 0, 0
 mcl_matches, old_matches, new_matches = [], [], []

@@ -1,11 +1,8 @@
-using DataFramesMeta
-using ProgressMeter
-using Statistics
-using CSV
+
 
 # loading input data
-csv_df = CSV.File("data/input/mcl_2020.csv", normalizenames=true) |> DataFrame
-
+csv_df = CSV.File("data/input/ICF_MCL_MAY2021.csv", normalizenames=true) |> DataFrame
+csv_df |> names |> print
 old_df = CSV.File("data/input/Old_MCL.csv") |> DataFrame
 old_df = @select(old_df, :CUST_EMAIL_ADDR, :CUST_ID)  # selecting emails
 old_df = coalesce.(old_df, "NA")
@@ -17,7 +14,7 @@ write("data/input/mcl_2020-description.txt", csv_desc |> string)
 
 # constants 
 prob_f = 0.005
-savings_reduction = 0.5  # applying 50% reduction on Tstat Therms Saved per McGee Y.
+savings_reduction = 0.5  # applying 50% reduction on Tstat Therms Saved per McGee  Y.
 
 # removing under 300 therms users && w/o email
 df = @where(csv_df, :WINTER_2020_THMS .> 300)
@@ -25,12 +22,12 @@ df = @where(csv_df, :WINTER_2020_THMS .> 300)
 # building cols
 @time begin
 
-    df[!,"Heating Therms"] .= df[!,"2020_ANNUAL"] .- 12 .* mean(
-        [ df[!,"202006"], df[!,"202007"], df[!,"202008"], df[!,"202009"] ])
+    df[!,"Heating Therms"] .= df[!,"_2020_ANNUAL"] .- 12 .* mean(
+        [ df[!,"_202006"], df[!,"_202007"], df[!,"_202008"], df[!,"_202009"] ])
 
-    df[!,"Baseload Therms"] .= df[!,"2020_ANNUAL"] .- df[!,"Heating Therms"]
+    df[!,"Baseload Therms"] .= df[!,"_2020_ANNUAL"] .- df[!,"Heating Therms"]
     
-    df[!,"% Baseload"] .= df[!,"Baseload Therms"] ./ df[!,"2020_ANNUAL"]
+    df[!,"% Baseload"] .= df[!,"Baseload Therms"] ./ df[!,"_2020_ANNUAL"]
     
     df[!,"T-stat/heating"] .= (df[!,"wop"] .+ df[!,"tstat"]) ./ df[!,"Heating Therms"]
     
@@ -40,7 +37,7 @@ df = @where(csv_df, :WINTER_2020_THMS .> 300)
     
     df[!,"WH Therms Saved"] .= df[!,"HW/baseload"] .* df[!,"Baseload Therms"]
     
-    df[!,"Comb Savings as % of Annual"] .= (df[!,"Tstat Therms Saved"] .+ df[!,"WH Therms Saved"]) ./ df[!,"2020_ANNUAL"]
+    df[!,"Comb Savings as % of Annual"] .= (df[!,"Tstat Therms Saved"] .+ df[!,"WH Therms Saved"]) ./ df[!,"_2020_ANNUAL"]
     
     df[!,"HW/baseload"] .= df[!,"swh"] ./ df[!,"Baseload Therms"]
     
@@ -48,7 +45,7 @@ df = @where(csv_df, :WINTER_2020_THMS .> 300)
     
     df[!,"Combined Therms Savings"] .= df[!,"Tstat Therms Saved"] .+ df[!,"WH Therms Saved"]
     
-    df[!,"Combined % Savings"] .= df[!,"Combined Therms Savings"] ./ df[!,"2020_ANNUAL"]
+    df[!,"Combined % Savings"] .= df[!,"Combined Therms Savings"] ./ df[!,"_2020_ANNUAL"]
     
     df[!,"Probability Function of Savings"] .= df[!,"Combined Therms Savings"] * prob_f
     

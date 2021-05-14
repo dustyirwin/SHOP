@@ -1,22 +1,22 @@
 
-
 # loading input data
-csv_df = CSV.File("data/input/ICF_MCL_MAY2021.csv", normalizenames=true) |> DataFrame
+csv_df = CSV.File("data/input/mcl_2020.csv", normalizenames=true) |> DataFrame
 csv_df |> names |> print
+
 old_df = CSV.File("data/input/Old_MCL.csv") |> DataFrame
 old_df = @select(old_df, :CUST_EMAIL_ADDR, :CUST_ID)  # selecting emails
 old_df = coalesce.(old_df, "NA")
 old_df = @where(old_df, :CUST_EMAIL_ADDR .!= "NA")
 
 # writing input data description
-csv_desc = describe(csv_df, :all, sum=>:sum)
-write("data/input/mcl_2020-description.txt", csv_desc |> string)
+#csv_desc = describe(csv_df, :all, sum=>:sum)
+#write("data/input/mcl_2020-description.txt", csv_desc |> string)
 
 # constants 
 prob_f = 0.005
 savings_reduction = 0.5  # applying 50% reduction on Tstat Therms Saved per McGee  Y.
 
-# removing under 300 therms users && w/o email
+# removing under 300 winter therms users
 df = @where(csv_df, :WINTER_2020_THMS .> 300)
 
 # building cols
@@ -65,20 +65,20 @@ df[!,"Group"] = [
     ]
 
 
-@where(df, :Group .== "AB" ) # 347339  | 50913 w/400 therms, emails | 51865 @300,emails
-@where(df, :Group .== "A" ) # 207558 | 27536 w/400 therms, emails | 44477 @300, emails
-@where(df, :Group .== "B" ) # 154033 | 24559 w/400 therms, emails | 67890 @300, emails
-@where(df, :Group .== "C" )
+@where(df, :Group .== "AB" ) # 353738
+@where(df, :Group .== "A" ) # 334151
+@where(df, :Group .== "B" ) # 421059
+@where(df, :Group .== "C" ) # 146069
 
 
 # finding zeros in variables / possible NaN source
-sum(df[!,"2020_ANNUAL"] .== 0)
+sum(df[!,"_2020_ANNUAL"] .== 0)
 sum(df[!,"Baseload Therms"] .== 0)
-sum(df[!,"Heating Therms"] .== 0)  # 74 | 19 @300, emails found
+sum(df[!,"Heating Therms"] .== 0)  # 134 @300
 
 
 # excluding group C
-slim_df = @where(df, :Group .!= "C" ) # 0 | 0 | 61 @300 therms, emails
+slim_df = @where(df, :Group .!= "C" ) # 1108948
 
 # leftjoining slim and old on :CUST_ID
 both_emails_df = leftjoin(slim_df, old_df, on=:CUST_ID, makeunique=true)
@@ -97,17 +97,8 @@ both_emails_df[!,:CUST_EMAIL_ADDR] |> unique
 both_emails_df[!,:CUST_EMAIL_ADDR_1] |> unique
 
 slim_email_df = select(both_emails_df, Not(:CUST_EMAIL_ADDR_1))
-
-slim_email_df[!,:CUST_EMAIL_ADDR] |> unique
+slim_email_df[!,:CUST_EMAIL_ADDR] |> unique  # 337102
 
 # writing and describing output data
-write("data/output/MCL_2020_SHOP-300-therms-all-emails-slim-desc.txt", describe(slim_email_df, :all, sum=>:sum) |> string)
-outfile = CSV.write("data/output/MCL_2020_SHOP-300-therms-all-emails-slim.csv", slim_email_df)
-
-#j = 2
-#df[j, "GNN_ID"]
-#df[j,"Tstat Therms Saved"]
-#df[j,"WH Therms Saved"]
-#df[!]
-
-outfile = CSV.write("data/output/MCL_2020_SHOP-all-emails-only.csv", emails_only)
+write("data/output/mcl_2020_SHOP-300-therms-all-emails-slim-desc.txt", describe(slim_email_df, :all, sum=>:sum) |> string)
+CSV.write("data/output/mcl_2020_SHOP-300-therms-all-emails-slim.csv", slim_email_df)

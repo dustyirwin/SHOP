@@ -1,8 +1,5 @@
-
-using DataFramesMeta
-using ProgressMeter
-using Statistics
-using CSV
+include("SHOPBase.jl")
+using Main.SHOPBase
 
 
 # loading ReCurve project slugs (GNN_IDs)

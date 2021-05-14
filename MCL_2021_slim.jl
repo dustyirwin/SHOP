@@ -1,7 +1,6 @@
-using DataFramesMeta
-using ProgressMeter
-using Statistics
-using CSV
+
+include("SHOPBase.jl")
+using Main.SHOPBase
 
 
 keepcols = Symbol.([

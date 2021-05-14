@@ -2,7 +2,6 @@
 include("SHOPBase.jl")
 using Main.SHOPBase
 
-
 # loading input data
 csv_df = CSV.File("data/input/ICF_MCL_MAY2021.csv", normalizenames=true) |> DataFrame
 csv_df |> names |> print

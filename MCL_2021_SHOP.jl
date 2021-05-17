@@ -6,10 +6,9 @@ using Main.SHOPBase
 csv_df = CSV.File("data/input/ICF_MCL_MAY2021.csv", normalizenames=true) |> DataFrame
 csv_df |> names |> print
 
-
 # writing input data description
-csv_desc = describe(csv_df, :all, sum=>:sum)
-write("data/input/ICF_MCL_MAY2021-description.txt", csv_desc |> string)
+#csv_desc = describe(csv_df, :all, sum=>:sum)
+#write("data/input/ICF_MCL_MAY2021-description.txt", csv_desc |> string)
 
 # constants 
 prob_f = 0.005
@@ -17,7 +16,7 @@ savings_reduction = 0.5  # applying 50% reduction on Tstat Therms Saved per McGe
 
 # removing under 300 winter therms users
 df = @where(csv_df, :WINTER_2020_THMS .> 300)
-
+df = coalesce.(df, "NA")
 
 # building cols
 begin
@@ -57,6 +56,7 @@ df[!,"Group"] = [
     ]
 
 
+# Tier II customer groups
 @where(df, :Group .== "AB" ) # 11678
 @where(df, :Group .== "A" ) # 96855
 @where(df, :Group .== "B" ) # 44067
@@ -69,11 +69,11 @@ sum(df[!,"Baseload Therms"] .== 0)
 sum(df[!,"Heating Therms"] .== 0)  # 134
 
 
-# excluding group C
-slim_df = @where(df, :Group .!= "C" ) # 152600
+# excluding group C, slimming datset
+df = @where(df, :Group .!= "C" ) # 152600
+df = @where(df, :CUST_EMAIL_ADDR .!= "NA") # 89752
 
-slim_df = @where(slim_df, :CUST_EMAIL_ADDR .!= "NA") # 89752
-
+slim_df = select(df, intersect(df |> names, SHOPBase.column_names))
 slim_df[!,:CUST_EMAIL_ADDR] |> unique
 
 missing_email_percent = 89752 / 152600

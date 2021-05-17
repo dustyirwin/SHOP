@@ -9,5 +9,10 @@ using Reexport
 @reexport using CSV
 
 
+
+# column names to retain for slim version
+column_names_df = CSV.File("data/input/MCL_Fields.csv", normalizenames=true) |> DataFrame
+column_names = [ row["Fieldname"] for row in eachrow(column_names_df) if row["Keep"] == "Y" ]
+
 end
 

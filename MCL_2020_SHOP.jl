@@ -69,6 +69,7 @@ df[!,"Group"] = [
     ]
 
 
+# Tier I customer groups
 @where(df, :Group .== "AB" ) # 353738
 @where(df, :Group .== "A" ) # 334151
 @where(df, :Group .== "B" ) # 421059
@@ -100,7 +101,7 @@ both_emails_df = @where(both_emails_df, :CUST_EMAIL_ADDR .!= "NA")
 both_emails_df[!,:CUST_EMAIL_ADDR] |> unique
 both_emails_df[!,:CUST_EMAIL_ADDR_1] |> unique
 
-slim_email_df = select(both_emails_df, Not(:CUST_EMAIL_ADDR_1))
+slim_email_df = select(both_emails_df, intersect(both_emails_df |> names, SHOPBase.column_names))
 slim_email_df[!,:CUST_EMAIL_ADDR] |> unique  # 337102
 
 # writing and describing output data

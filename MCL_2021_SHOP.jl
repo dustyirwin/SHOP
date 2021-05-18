@@ -83,7 +83,5 @@ missing_email_percent = 89752 / 152600
 # TODO: Create Master MCL file with all relevant, cleaned, data
 
 # writing and describing output data
-write("data/output/ICF_MCL_2021_SHOP-300-therms-slim-desc.txt", 
-    describe(slim_df, :all, sum=>:sum) |> string)
-outfile = CSV.write("data/output/ICF_MCL_2021_SHOP-300-therms-slim.csv", 
-    slim_df)
+write("data/output/ICF_MCL_2021_SHOP-300-therms-slim-T2-desc.txt", describe(slim_df, :all, sum=>:sum) |> string)
+outfile = CSV.write("data/output/ICF_MCL_2021_SHOP-300-therms-slim-T2.csv", slim_df)

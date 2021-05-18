@@ -82,10 +82,11 @@ sum(df[!,"Baseload Therms"] .== 0)
 sum(df[!,"Heating Therms"] .== 0)  # 134 @300
 
 
-# excluding group C
+# excluding group C and slimming
 slim_df = @where(df, :Group .!= "C" ) # 1108948
+slim_df = coalesce.(df, "NA")
 
-# leftjoining slim and old on :CUST_ID
+# leftjoining old on slim using :CUST_ID
 both_emails_df = leftjoin(slim_df, old_df, on=:CUST_ID, makeunique=true)
 both_emails_df = coalesce.(both_emails_df, "NA")
 
@@ -99,11 +100,13 @@ end
 both_emails_df = @where(both_emails_df, :CUST_EMAIL_ADDR .!= "NA")
 
 both_emails_df[!,:CUST_EMAIL_ADDR] |> unique
-both_emails_df[!,:CUST_EMAIL_ADDR_1] |> unique
 
 slim_email_df = select(both_emails_df, intersect(both_emails_df |> names, SHOPBase.column_names))
-slim_email_df[!,:CUST_EMAIL_ADDR] |> unique  # 337102
+
+slim_email_df[!,:CUST_EMAIL_ADDR] |> unique  # 337102  392365 now?
+
+slim_email_df |> names |> print
 
 # writing and describing output data
-write("data/output/mcl_2020_SHOP-300-therms-all-emails-slim-desc.txt", describe(slim_email_df, :all, sum=>:sum) |> string)
-CSV.write("data/output/mcl_2020_SHOP-300-therms-all-emails-slim.csv", slim_email_df)
+write("data/output/MCL_2020_SHOP-300-therms-slim-T1-desc.txt", describe(slim_email_df, :all, sum=>:sum) |> string)
+CSV.write("data/output/MCL_2020_SHOP-300-therms-slim-T1.csv", slim_email_df)

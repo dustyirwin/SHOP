@@ -6,14 +6,14 @@ using InteractiveUtils
 
 # ╔═╡ d489614c-91a5-4e84-98a2-96c674d663cb
 begin
-	using PlutoUI
-	using OrdinaryDiffEq
-	using ModelingToolkit
-	using Plots
-	gr()
-
 	using DataDrivenDiffEq
+	using ModelingToolkit
+	using OrdinaryDiffEq
 	using LinearAlgebra
+	using PlutoUI
+	using Plots
+
+	plotly()
 end
 
 # ╔═╡ d013495a-81dc-476c-b8e6-b53b4e247b6a

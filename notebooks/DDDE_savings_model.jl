@@ -4,17 +4,21 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ d489614c-91a5-4e84-98a2-96c674d663cb
-begin
-	using DataDrivenDiffEq
-	using ModelingToolkit
-	using OrdinaryDiffEq
-	using LinearAlgebra
-	using PlutoUI
-	using Plots
+# ╔═╡ e8ba56fb-0444-404c-aa72-c97ce55ace1f
+import Pkg
 
-	plotly()
+# ╔═╡ 6d7ab689-a21b-4589-9330-0b915c063ac5
+begin
+	using Flux
+	
+	
 end
+
+# ╔═╡ 7d012b27-dddf-4c21-850c-f3d9326e4549
+
+
+# ╔═╡ b2ecfa5b-030d-4a15-864a-391089c261bd
+
 
 # ╔═╡ d013495a-81dc-476c-b8e6-b53b4e247b6a
 md"""
@@ -43,9 +47,7 @@ function lorenz(u,p,t)
 end
 
 # ╔═╡ 2bac05a0-b751-11eb-137d-335fd0a4ddc3
-begin	
-	gr()
-
+begin
 	u0 = [-8.0; 7.0; 27.0]
 	p = [10.0; -10.0; 28.0; -1.0; -1.0; 1.0; -8/3]
 	tspan = (0.0,100.0)
@@ -108,15 +110,26 @@ error = if @isdefined Ψ
 	get_error(Ψ)
 end
 
+# ╔═╡ 5d646491-ec92-48f6-87ac-8c94c81ca9ac
+DarkMode.ToolBox()
+
+# ╔═╡ de6e8673-b1a1-4e8f-9827-0f991e032a4a
+DarkMode.enable()
+
 # ╔═╡ Cell order:
-# ╠═d489614c-91a5-4e84-98a2-96c674d663cb
+# ╠═e8ba56fb-0444-404c-aa72-c97ce55ace1f
+# ╠═6d7ab689-a21b-4589-9330-0b915c063ac5
+# ╠═7d012b27-dddf-4c21-850c-f3d9326e4549
+# ╠═b2ecfa5b-030d-4a15-864a-391089c261bd
 # ╟─d013495a-81dc-476c-b8e6-b53b4e247b6a
 # ╠═e0f35fbd-8bde-4b18-bc85-ebadb93b374d
 # ╠═eeb18ed4-c832-49c6-a8fa-fa92112b7c4f
 # ╟─e0a94e3d-f7d5-4bf5-9d3b-9c17a4003db6
-# ╟─f5a14162-41ef-4beb-9352-3d5995ee4288
+# ╠═f5a14162-41ef-4beb-9352-3d5995ee4288
 # ╠═2bac05a0-b751-11eb-137d-335fd0a4ddc3
 # ╟─5a5e4c68-05fe-46c8-b15e-88991d09177c
 # ╠═4b649624-5318-4123-a312-aaf937659243
 # ╟─b8b46904-c75e-43de-9950-6d39b01b35e3
 # ╟─f34efd04-ad47-4b65-a655-ab0c9d936030
+# ╠═5d646491-ec92-48f6-87ac-8c94c81ca9ac
+# ╠═de6e8673-b1a1-4e8f-9827-0f991e032a4a

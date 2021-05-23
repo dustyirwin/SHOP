@@ -30,8 +30,9 @@ keepcols = Symbol.([
 "_202011",
 "_202012",
 "_202101",
-#"_202102",
+"_202102",
 "_2020_ANNUAL",
+"savings"
 ])
 
 # loading input data

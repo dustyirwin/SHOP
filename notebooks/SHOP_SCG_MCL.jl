@@ -45,7 +45,8 @@ end
 
 # ╔═╡ 60dd45e8-3c31-4575-8739-a8d664aa58f3
 md"""
-## Upload SCG MCL data (pre-intervention data?)
+## Upload SCG MCL data 
+**(pre-intervention data?)**
 
 - [Old_MCL.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EW2KFBNs449MmM_yfWI3BjcBYtJndy1mp7LTnqBhVqMGMw?e=36UXuh) has data back to 2018, no monthly data! -- do we have monthly?
  - [mcl_2020.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EecHDcsSvkpLjDyo4aS3B6sBwnTNylXMFsgqfNXSBkc_yg?e=LTucR7) file has monthly data from 2019/12 - 2021/01
@@ -63,17 +64,8 @@ MCL_desc = if !isempty(SCG_csv["data"])
 	describe(MCL_df, :all, sum=>:sum)
 end
 
-# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
-begin
-	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
-	unique_custs = MCL_df[!,:CUST_ID] |> unique |> length
-	
-	md"""
-	unique projects: $unique_projects
-	
-	unique customers: $unique_custs
-	"""
-end
+# ╔═╡ 9616d97c-9da4-4190-910b-c9585f967cdc
+md"Using [MCL_Fields.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQx_wySet5ZInGTVwD42Q6UBXQn7kOsvcPNpVKaoUbySqQ?e=eGbvX7) to keep cloumns required for PBI dashboard."
 
 # ╔═╡ a4cda47d-907b-4510-b68e-63b87d78ae02
 if !isempty(SCG_csv["data"])
@@ -119,13 +111,15 @@ New savings estimate parameters:
 - Propensity score = $(@bind propensity NumberField(0:100,default=1.5)) %
 
 
-Group qualifications:
-- Group A: Estimated Aquanta Savings is at least $(@bind aqsav_lower NumberField(1:999, default=20)) therms and less than $(@bind aqsav_upper NumberField(1:999, default=999)) therms
-- Group B: Estimated Smart Thermostat Savings is at least $(@bind tssav_lower NumberField(1:999, default=20)) therms and less than $(@bind tssav_upper NumberField(1:999, default=999)) therms
+Grouping qualifications:
+- Tier I threshold: $(@bind T1_thresh NumberField(1:99999, default=20)) therms savings for any measure
+- Tier II threshold: $(@bind T2_thresh NumberField(1:99999, default=100)) total `Combined Therms Savings`
+
+
+- Group A: Estimated Aquanta Savings meets Tier I threshold.
+- Group B: Estimated Smart Thermostat Savings meets Tier I threshold.
 - Group AB: Meets both group requirements.
 - Group C: Meets neither group requirements.
-- __Should we enforce an upper limit on savings? The Aquanta can save only so much?__
-
 
 
 **Targetting and savings calculation details may be found in the [Targeting for SHOP program](https://icfonline-my.sharepoint.com/:w:/g/personal/33648_icf_com/EUiH4sP72QNKuGLEADCFb5EB0rd-NmRyTSzf7cRKorFNHg?e=pa4Puu) document**
@@ -148,18 +142,17 @@ MCL_new_savings = if @isdefined MCL_csv
 	df[!,:Combined_Therms_Savings] = df[!,:Tstat_Therms_Saved] .+ df[!,:WH_Therms_Saved]
 	
 	df
-end
+end;
 
 # ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
 if MCL_new_savings isa DataFrame
 	MCL_new_savings[!,:Group] = [
 		
-	if MCL_new_savings[i,:Tstat_Therms_Saved] > 20 && MCL_new_savings[i,:Tstat_Therms_Saved] < tssav_upper &&
-		MCL_new_savings[i,:WH_Therms_Saved] > 20 && MCL_new_savings[i,:WH_Therms_Saved] < aqsav_upper
+	if MCL_new_savings[i,:Tstat_Therms_Saved] > T1_thresh && MCL_new_savings[i,:WH_Therms_Saved] > T1_thresh
 		"AB"
-	elseif MCL_new_savings[i,:Tstat_Therms_Saved] > 20 && MCL_new_savings[i,:Tstat_Therms_Saved] < tssav_upper
+	elseif MCL_new_savings[i,:Tstat_Therms_Saved] > T1_thresh
 		"A"
-	elseif MCL_new_savings[i,:WH_Therms_Saved] > 20 && MCL_new_savings[i,:WH_Therms_Saved] < aqsav_upper
+	elseif MCL_new_savings[i,:WH_Therms_Saved] > T1_thresh
 		"B"
 	else
 		"C"
@@ -167,11 +160,13 @@ if MCL_new_savings isa DataFrame
 				
 	]
 	
+	MCL_new_savings[!,:Tier] = [ savings > T2_thresh ? 2 : 1 for savings in MCL_new_savings[!,:Combined_Therms_Savings] ]
+	
 	MCL_grouped_savings = @where(MCL_new_savings, :Group .!= "C")
 	
 	md"""
 	## Customer Grouping 
-	Collecting customers into AB, A, and B groupings. Discarding group C.
+	Collecting customers into AB, A, and B groups and Tier I and Tier II rankings. Discarding group C.
 	"""
 end
 
@@ -310,6 +305,18 @@ leftright(a, b; width=600) = """
 </table>
 """ |> HTML
 
+# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
+if @isdefined MCL_df
+	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
+	unique_custs = MCL_df[!,:CUST_ID] |> unique |> length
+	
+	
+	leftright(
+		md"unique projects: $unique_projects",
+		md"unique customers: $unique_custs"
+	)
+end
+
 # ╔═╡ 2945046d-0107-4c6a-b65a-1a2a804d79b9
 md"""
 ## Customer Targeting
@@ -385,13 +392,10 @@ updown(a, b; width=nothing) = """
 """ |> HTML
 
 # ╔═╡ 8764c5aa-3472-4a7e-9212-9af62d3f902e
-md"""
-Using [MCL_Fields.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQx_wySet5ZInGTVwD42Q6UBXQn7kOsvcPNpVKaoUbySqQ?e=eGbvX7) to keep required MCL Fieldnames for PBI dashboard.
-$(updown(
-	md"Choose a csv file with column names to keep: $(@bind keep_cols_csv FilePicker())",
+updown(
 	md"Slim down this dataset using :Fieldname values? $(@bind slim_df CheckBox(default=false))", 
-	))
-"""
+	md"Choose a csv file with column names to keep: $(@bind keep_cols_csv FilePicker())",
+)
 
 # ╔═╡ d7598973-beb7-44b1-835b-3527fdc70668
 MCL_keepcols = if !isempty(keep_cols_csv["data"]) && slim_df
@@ -438,6 +442,7 @@ end
 # ╟─60dd45e8-3c31-4575-8739-a8d664aa58f3
 # ╟─11c11ff9-5a14-4fe3-ab53-a65111060115
 # ╟─11fd20c1-a9c8-4467-a65f-990015da018e
+# ╟─9616d97c-9da4-4190-910b-c9585f967cdc
 # ╟─8764c5aa-3472-4a7e-9212-9af62d3f902e
 # ╟─d7598973-beb7-44b1-835b-3527fdc70668
 # ╟─4e1fb60a-85dc-4831-9132-02d3eba6ea95

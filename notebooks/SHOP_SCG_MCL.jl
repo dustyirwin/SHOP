@@ -211,7 +211,7 @@ if MCL_new_savings isa DataFrame
 end
 
 # ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-if (MCL_grouped_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_grouped_savings |> names)
+if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_grouped_savings |> names)
 	histogram(
 		select(MCL_grouped_savings, :Tstat_Therms_Saved, :WH_Therms_Saved) |> Matrix,
 		title="New Therms Savings Histogram",
@@ -222,14 +222,14 @@ end
 
 # ╔═╡ b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
 with_terminal() do
-	if MCL_grouped_savings isa DataFrame
+	if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
 		g = groupby(MCL_grouped_savings, :Group)
 		combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
 	end
 end
 
 # ╔═╡ 725ece46-1b76-4f28-8cd7-4856dc892b40
-begin
+if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
 	mean_therm_savings_per_home = round( MCL_grouped_savings[!,:Combined_Therms_Savings] |> mean, digits=2)
 	total_therm_savings = round( MCL_grouped_savings[!,:Combined_Therms_Savings] |> sum, digits=2)
 	program_savings = round( total_therm_savings * propensity / 100, digits=2)
@@ -254,6 +254,7 @@ begin
 end;
 
 # ╔═╡ 658132e8-9cb1-4e02-a4d0-3970d8180bad
+if (@isdefined MCL_grouped_savings) 
 md"""
 
 # Program Savings Stats
@@ -279,6 +280,7 @@ md"""
 - B total savings = $sum_B_savings
 
 """
+end
 
 # ╔═╡ 3d2b922c-33d2-46e9-9729-6087cd0d3bcb
 md"""
@@ -427,7 +429,7 @@ if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
 end
 
 # ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
-MCL_grouped_savings_desc = if MCL_grouped_savings isa DataFrame
+MCL_grouped_savings_desc = if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
 	updown(
 		
 		describe(

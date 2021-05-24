@@ -19,10 +19,11 @@ begin
 	Pkg.activate("SHOPluto")
 	
 	try
-		using HypertextLiteral
+		using PlotlyBase
 	catch
+		Pkg.rm("HypertextLiteral")
 		Pkg.add(url="https://github.com/Pocket-titan/DarkMode#master")
-		Pkg.add(["PlutoUI", "StatsPlots", "CSV", "Statistics", "DataFramesMeta","HypertextLiteral"])
+		Pkg.add(["PlutoUI", "StatsPlots", "CSV", "Statistics", "DataFramesMeta", "PlotlyBase"])
 	end
 	
 	using DataFramesMeta
@@ -48,7 +49,9 @@ md"""
 ## Upload SCG MCL data 
 **(pre-intervention data?)**
 
-- [Old_MCL.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EW2KFBNs449MmM_yfWI3BjcBYtJndy1mp7LTnqBhVqMGMw?e=36UXuh) has data back to 2018, no monthly data! -- do we have monthly?
+- [Old_MCL.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EW2KFBNs449MmM_yfWI3BjcBYtJndy1mp7LTnqBhVqMGMw?e=36UXuh) has data back to 2018, no monthly data
+!!! warning 
+	do we have monthly data for 2018? Would this help with winter / baseline usage assumptions?
  - [mcl_2020.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EecHDcsSvkpLjDyo4aS3B6sBwnTNylXMFsgqfNXSBkc_yg?e=LTucR7) file has monthly data from 2019/12 - 2021/01
  - [ICF\_MCL\_MAY2021.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQEmFBJuiB9DikSXEGR-1BEBHLySqZYwuoCd1amrFrZQZw?e=Sbh6ol) file has monthly data from 2020/01 - 2021/02
 - [MCL\_Combined\_201912-202102-slim](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQsqOS5uWS9Ft1oIZAsMaWwBtEAigsOndoLAeO7IZCig8w?e=DTaAsU) contains all available monthly data
@@ -65,7 +68,8 @@ MCL_desc = if !isempty(SCG_csv["data"])
 end
 
 # ╔═╡ 9616d97c-9da4-4190-910b-c9585f967cdc
-md"Using [MCL_Fields.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQx_wySet5ZInGTVwD42Q6UBXQn7kOsvcPNpVKaoUbySqQ?e=eGbvX7) to keep cloumns required for PBI dashboard."
+md"!!! note
+	Using [MCL_Fields.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQx_wySet5ZInGTVwD42Q6UBXQn7kOsvcPNpVKaoUbySqQ?e=eGbvX7) to keep columns required for PBI dashboard."
 
 # ╔═╡ a4cda47d-907b-4510-b68e-63b87d78ae02
 if !isempty(SCG_csv["data"])
@@ -86,7 +90,8 @@ end
 
 # ╔═╡ a71665f4-0951-44f7-969e-d933bed20f62
 md"""
-__Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `swh`, `wop`, and `tstat` columns__
+!!! info
+	Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `swh`, `wop`, and `tstat` columns
 
 ## Measure Savings Results
 """
@@ -94,12 +99,17 @@ __Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `sw
 # ╔═╡ 0fad5851-fe23-4895-9194-dd1625c9abe5
 md"""
 
-## ⚠️ Measure Savings ReCalc
+## Measure Savings ReCalc
 
-1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=999)) therms.
-- `Baseload Therms` is now defined as the average monthyl therms usage of June, July, Aug and Sept.
-- __Should we take an avg of all available years?__
-- __Should we impose and upper limit on Heating_therms usage? Are we including bad building types?__
+1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=99999)) therms.
+!!! warning 
+	Enforce a cap on `Heating Therms`? Why are some homes using so much gas?
+
+- `Baseload Therms` is now defined as the average monthly therms usage of June, July, Aug and Sept.
+!!! warning
+	Should we take an avg of all available years for baseline / heating therms values?
+!!! warning
+	Should we impose and upper limit on Heating_therms usage? Are we including bad building types?
 1. Recalculating estimated savings based on 7% of heating load for Smart Thermostats and 4% for Aquanta WH Controllers
 1. Discounting savings by 50%.
 
@@ -114,6 +124,10 @@ New savings estimate parameters:
 Grouping qualifications:
 - Tier I threshold: $(@bind T1_thresh NumberField(1:99999, default=20)) therms savings for any measure
 - Tier II threshold: $(@bind T2_thresh NumberField(1:99999, default=100)) total `Combined Therms Savings`
+!!! warning
+	Should the Tier II metric be cost-driven?
+!!! warning
+	Place a cap on therms savings? How much can one Aquanta realistically save in a single family home?
 
 
 - Group A: Estimated Aquanta Savings meets Tier I threshold.
@@ -122,7 +136,8 @@ Grouping qualifications:
 - Group C: Meets neither group requirements.
 
 
-**Targetting and savings calculation details may be found in the [Targeting for SHOP program](https://icfonline-my.sharepoint.com/:w:/g/personal/33648_icf_com/EUiH4sP72QNKuGLEADCFb5EB0rd-NmRyTSzf7cRKorFNHg?e=pa4Puu) document**
+!!! note
+	Targetting and savings calculation details may be found in the [Targeting for SHOP program](https://icfonline-my.sharepoint.com/:w:/g/personal/33648_icf_com/EUiH4sP72QNKuGLEADCFb5EB0rd-NmRyTSzf7cRKorFNHg?e=pa4Puu) document
 """
 
 # ╔═╡ 6c53ca70-b96f-4e0d-862f-45b335092556
@@ -170,6 +185,12 @@ if MCL_new_savings isa DataFrame
 	"""
 end
 
+# ╔═╡ 4cf2930e-7427-490e-a525-cec1d3d0ae09
+#@where(MCL_grouped_savings, :Tier .== 1) |> eachrow |> length
+
+# ╔═╡ 18eae425-5aed-4149-9705-9795f949f789
+#@where(MCL_grouped_savings, :Tier .== 2) |> eachrow |> length
+
 # ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
 if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_grouped_savings |> names)
 	histogram(
@@ -178,14 +199,6 @@ if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame) && ("
 		labels=string.([:Tstat_Therms_Saved :WH_Therms_Saved]),
 		size=(800,400),
 	)
-end
-
-# ╔═╡ b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
-with_terminal() do
-	if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
-		g = groupby(MCL_grouped_savings, :Group)
-		combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
-	end
 end
 
 # ╔═╡ 725ece46-1b76-4f28-8cd7-4856dc892b40
@@ -225,7 +238,9 @@ md"""
 - Total therms savings = $total_therm_savings
 - Mean therms saved per home (are these only single-family residential homes?) per year = $mean_therm_savings_per_home
 
-
+	
+### Tier I & II
+	
 - AB count = $AB_count
 - ABs without email addresses = $ABs_no_email
 - AB mean savings = $mean_AB_savings
@@ -243,6 +258,12 @@ md"""
 - B mean savings = $mean_B_savings
 - B total savings = $sum_B_savings
 
+	
+### Tier I
+	
+### Tier II
+
+	
 """
 end
 
@@ -305,22 +326,11 @@ leftright(a, b; width=600) = """
 </table>
 """ |> HTML
 
-# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
-if @isdefined MCL_df
-	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
-	unique_custs = MCL_df[!,:CUST_ID] |> unique |> length
-	
-	
-	leftright(
-		md"unique projects: $unique_projects",
-		md"unique customers: $unique_custs"
-	)
-end
-
 # ╔═╡ 2945046d-0107-4c6a-b65a-1a2a804d79b9
 md"""
 ## Customer Targeting
-Targeting and savings estimation methods used based on Ahmed's [savings_calculations.R](https://icfonline-my.sharepoint.com/:u:/g/personal/33648_icf_com/EYXit2vgTO9HjXsu6ShU4MgBF4SUhPkqU16NRtKQS8eQCg?e=cnH78I) script
+!!! note
+	Targeting and savings estimation methods used based on Ahmed's [savings_calculations.R](https://icfonline-my.sharepoint.com/:u:/g/personal/33648_icf_com/EYXit2vgTO9HjXsu6ShU4MgBF4SUhPkqU16NRtKQS8eQCg?e=cnH78I) script
 
 $(leftright(
 	md"Use Quantiles? $(@bind use_quantiles CheckBox(default=true))",
@@ -391,6 +401,25 @@ updown(a, b; width=nothing) = """
 </table>
 """ |> HTML
 
+# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
+if @isdefined MCL_df
+	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
+	unique_customers = MCL_df[!,:CUST_ID] |> unique |> length
+	unique_emails = MCL_df[!,:CUST_EMAIL_ADDR] |> unique |> length
+	unique_addresses = MCL_df[!,:SVC_ADDR1] |> unique |> length
+	
+	updown(
+		leftright(
+			md"unique projects: $unique_projects",
+			md"unique customers: $unique_customers"
+		),
+		leftright(
+			md"unique emails: $unique_emails",
+			md"unique service addresses: $unique_addresses"
+		),
+	)
+end
+
 # ╔═╡ 8764c5aa-3472-4a7e-9212-9af62d3f902e
 updown(
 	md"Slim down this dataset using :Fieldname values? $(@bind slim_df CheckBox(default=false))", 
@@ -419,6 +448,14 @@ if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
 			cols=["savings"]),
 		Resource("https://mashable-evaporation-wordpress.s3.amazonaws.com/2013/07/Dr.-Who.gif")
 	)
+end
+
+# ╔═╡ 5066ed9a-32ae-4b25-b065-c50a81df59f6
+if @isdefined MCL_grouped_savings
+	updown(md"""
+	Note: this looks like a [Pareto distribution](https://en.wikipedia.org/wiki/Pareto_distribution)	$(Resource(https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Probability_density_function_of_Pareto_distribution.svg/1920px-Probability_density_function_of_Pareto_distribution.svg.png))
+	""",
+Resource("https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Probability_density_function_of_Pareto_distribution.svg/1920px-Probability_density_function_of_Pareto_distribution.svg.png", :width => 500))
 end
 
 # ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
@@ -458,9 +495,11 @@ end
 # ╟─0fad5851-fe23-4895-9194-dd1625c9abe5
 # ╟─6c53ca70-b96f-4e0d-862f-45b335092556
 # ╟─7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
+# ╠═4cf2930e-7427-490e-a525-cec1d3d0ae09
+# ╠═18eae425-5aed-4149-9705-9795f949f789
 # ╟─bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
+# ╟─5066ed9a-32ae-4b25-b065-c50a81df59f6
 # ╟─b7461faf-dc28-4f62-a43a-08870c0d83a1
-# ╟─b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
 # ╟─725ece46-1b76-4f28-8cd7-4856dc892b40
 # ╟─658132e8-9cb1-4e02-a4d0-3970d8180bad
 # ╟─3d2b922c-33d2-46e9-9729-6087cd0d3bcb

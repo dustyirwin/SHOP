@@ -20,3 +20,11 @@ Tier_Group_counts = if (@isdefined MCL_df) && ("Tier" in names(MCL_df)) && ("Gro
 	
 	cts |> DataFrame
 end
+
+
+with_terminal() do
+	if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
+		t = groupby(MCL_grouped_savings, :Tier)
+		combine(describe, t, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
+	end
+end

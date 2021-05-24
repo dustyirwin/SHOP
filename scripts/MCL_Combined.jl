@@ -31,6 +31,8 @@ out_df = outerjoin(
     )
 
 out_df = unique(out_df, :GNN_ID)
+out_df |> names
+
 
 write("data/output/MCL_Combined_201912-202102-slim-description.txt", describe(out_df, :all, sum=>:sum) |> string)
 CSV.write("data/output/MCL_Combined_201912-202102-slim.csv", out_df)

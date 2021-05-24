@@ -63,51 +63,16 @@ MCL_desc = if !isempty(SCG_csv["data"])
 	describe(MCL_df, :all, sum=>:sum)
 end
 
-# ╔═╡ 8764c5aa-3472-4a7e-9212-9af62d3f902e
-md"""
-__Slim down this dataset? $(@bind slim_df CheckBox(default=false)) You may select which columns to keep below...__
-"""
-
-# ╔═╡ d7598973-beb7-44b1-835b-3527fdc70668
-MCL_keepcols = Symbol.([
-
-"GNN_ID"
-"CUST_ID"
-"IC_FST_NM"
-"IC_LST_NM"
-"DA_NBR"
-"SVC_ADDR1"
-"SVC_ADDR2"
-"SVC_CITY"
-"SVC_STATE"
-"SVC_ZIP"
-"CUST_HOME_PHONE"
-"CUST_CELL_PHONE"
-"CUST_EMAIL_ADDR"
-"CEC_ZONE"
-"_202001"
-"_202002"
-"_202003"
-"_202004"
-"_202005"
-"_202006"
-"_202007"
-"_202008"
-"_202009"
-"_202010"
-"_202011"
-"_202012"
-"_202101"
-"_202102"
-"_2020_ANNUAL"
-"_2020_BASELOAD_THMS"
-"WINTER_2020_THMS"
-
-])
-
-# ╔═╡ 4e1fb60a-85dc-4831-9132-02d3eba6ea95
-if (@isdefined MCL_df) && slim_df
-	select!(MCL_df, MCL_keepcols)
+# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
+begin
+	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
+	unique_custs = MCL_df[!,:CUST_ID] |> unique |> length
+	
+	md"""
+	unique projects: $unique_projects
+	
+	unique customers: $unique_custs
+	"""
 end
 
 # ╔═╡ a4cda47d-907b-4510-b68e-63b87d78ae02
@@ -238,7 +203,9 @@ if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
 	As = @where(MCL_grouped_savings, :Group .== "A")
 	Bs = @where(MCL_grouped_savings, :Group .== "B")
 	
-	ABs_no_email = @where(unique(ABs, :CUST_EMAIL_ADDR), :CUST_EMAIL_ADDR .!= "NA")[!,:CUST_ID] |> length
+	ABs_no_email = (unique(ABs, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
+	As_no_email = (unique(As, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
+	Bs_no_email = (unique(Bs, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
 	
 	AB_count = round( ABs[!,:Group] |> length, digits=2)
 	A_count = round( As[!,:Group] |> length, digits=2)
@@ -265,17 +232,19 @@ md"""
 
 
 - AB count = $AB_count
+- ABs without email addresses = $ABs_no_email
 - AB mean savings = $mean_AB_savings
 - AB total savings = $sum_AB_savings
-- ABs without email addresses = $ABs_no_email
 
 
 - A count = $A_count
+- As without email = $As_no_email
 - A mean savings = $mean_A_savings
 - A total savings = $sum_A_savings
 
-
+	
 - B count = $B_count
+- Bs without email = $Bs_no_email
 - B mean savings = $mean_B_savings
 - B total savings = $sum_B_savings
 
@@ -415,6 +384,26 @@ updown(a, b; width=nothing) = """
 </table>
 """ |> HTML
 
+# ╔═╡ 8764c5aa-3472-4a7e-9212-9af62d3f902e
+md"""
+Using [MCL_Fields.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQx_wySet5ZInGTVwD42Q6UBXQn7kOsvcPNpVKaoUbySqQ?e=eGbvX7) to keep required MCL Fieldnames for PBI dashboard.
+$(updown(
+	md"Choose a csv file with column names to keep: $(@bind keep_cols_csv FilePicker())",
+	md"Slim down this dataset using :Fieldname values? $(@bind slim_df CheckBox(default=false))", 
+	))
+"""
+
+# ╔═╡ d7598973-beb7-44b1-835b-3527fdc70668
+MCL_keepcols = if !isempty(keep_cols_csv["data"]) && slim_df
+	kc_df = CSV.File(UInt8.(keep_cols_csv["data"]) |> IOBuffer, normalizenames=true) |> DataFrame
+	kc_df[!,:Fieldname]
+end
+
+# ╔═╡ 4e1fb60a-85dc-4831-9132-02d3eba6ea95
+if (@isdefined MCL_df) && slim_df
+	select!(MCL_df, intersect(MCL_keepcols, MCL_df |> names))
+end
+
 # ╔═╡ d2a6550a-a9aa-45fc-9435-92b4d9e016ab
 if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
 	savings = MCL_savings[!,:savings] |> sum 
@@ -448,6 +437,7 @@ end
 # ╟─868cd960-ba5b-11eb-2c92-255e7e10725e
 # ╟─60dd45e8-3c31-4575-8739-a8d664aa58f3
 # ╟─11c11ff9-5a14-4fe3-ab53-a65111060115
+# ╟─11fd20c1-a9c8-4467-a65f-990015da018e
 # ╟─8764c5aa-3472-4a7e-9212-9af62d3f902e
 # ╟─d7598973-beb7-44b1-835b-3527fdc70668
 # ╟─4e1fb60a-85dc-4831-9132-02d3eba6ea95

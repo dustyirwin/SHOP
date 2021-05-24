@@ -35,7 +35,7 @@ begin
 	import DarkMode
 	
 	md"""
-	# 📜 Napkin Calcs 
+	# 📜 SHOP Napkin :: SCG MCL
 	
 	Hi McGee! This is an experimental tool use with caution ⚠️ 
 	"""
@@ -43,12 +43,15 @@ end
 
 # ╔═╡ 60dd45e8-3c31-4575-8739-a8d664aa58f3
 md"""
-## Upload SCG MCL data
+## Upload SCG MCL data (pre-intervention data?)
 
-Latest MCL: 
+- [Old_MCL.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EW2KFBNs449MmM_yfWI3BjcBYtJndy1mp7LTnqBhVqMGMw?e=36UXuh) has data back to 2018, no monthly data! -- do we have monthly?
+ - [mcl_2020.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EecHDcsSvkpLjDyo4aS3B6sBwnTNylXMFsgqfNXSBkc_yg?e=LTucR7) file has monthly data from 2019/12 - 2021/01
+ - [ICF\_MCL\_MAY2021.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQEmFBJuiB9DikSXEGR-1BEBHLySqZYwuoCd1amrFrZQZw?e=Sbh6ol) file has monthly data from 2020/01 - 2021/02
+- [MCL\_Combined\_201912-202102-slim](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQsqOS5uWS9Ft1oIZAsMaWwBtEAigsOndoLAeO7IZCig8w?e=DTaAsU) contains all available monthly data
 
-Column header names will be normalized. Descriptions will be provided below.
-- MCL (SoCalGas) data input: $(@bind SCG_csv FilePicker())
+Column header names will be normalized. A dataset description will be generated below.
+- SCG MCL data input: $(@bind SCG_csv FilePicker())
 """
 
 # ╔═╡ 11c11ff9-5a14-4fe3-ab53-a65111060115
@@ -131,10 +134,12 @@ __Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `sw
 # ╔═╡ 0fad5851-fe23-4895-9194-dd1625c9abe5
 md"""
 
-# ⚠️ Measure Savings ReCalc
+## ⚠️ Measure Savings ReCalc
 
-1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=9999)) therms.
+1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=999)) therms.
+- `Baseload Therms` is now defined as the average monthyl therms usage of June, July, Aug and Sept.
 - __Should we take an avg of all available years?__
+- __Should we enforce an upper limit on savings? The Aquanta can save only so much?__
 1. Recalculating estimated savings based on 7% of heating load for Smart Thermostats and 4% for Aquanta WH Controllers
 1. Discounting savings by 50%.
 
@@ -147,8 +152,8 @@ New savings estimate parameters:
 
 
 Group qualifications:
-- Group A: Estimated Aquanta Savings is at least $(@bind aqsav_lower NumberField(1:999, default=20.)) therms and less than $(@bind aqsav_upper NumberField(1:999, default=100.)) therms
-- Group B: Estimated Smart Thermostat Savings is at least $(@bind tssav_lower NumberField(1:999, default=20.)) therms and less than $(@bind tssav_upper NumberField(1:999, default=100.)) therms
+- Group A: Estimated Aquanta Savings is at least $(@bind aqsav_lower NumberField(1:999, default=20)) therms and less than $(@bind aqsav_upper NumberField(1:999, default=999)) therms
+- Group B: Estimated Smart Thermostat Savings is at least $(@bind tssav_lower NumberField(1:999, default=20)) therms and less than $(@bind tssav_upper NumberField(1:999, default=999)) therms
 - Group AB: Meets both group requirements.
 - Group C: Meets neither group requirements.
 
@@ -172,13 +177,7 @@ MCL_new_savings = if @isdefined MCL_csv
 	
 	df[!,:Combined_Therms_Savings] = df[!,:Tstat_Therms_Saved] .+ df[!,:WH_Therms_Saved]
 	
-	df = @where(df, :Tstat_Therms_Saved .> tssav_lower)
-	
-	df = @where(df, :Tstat_Therms_Saved .< tssav_upper)  # setting upper limit.. keep?
-	
-	df = @where(df, :WH_Therms_Saved .> aqsav_lower)
-		
-	df = @where(df, :WH_Therms_Saved .< aqsav_upper)  # setting upper limit.. keep?
+	df
 end
 
 # ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
@@ -186,7 +185,7 @@ if MCL_new_savings isa DataFrame
 	MCL_new_savings[!,:Group] = [
 		
 	if MCL_new_savings[i,:Tstat_Therms_Saved] > 20 && MCL_new_savings[i,:WH_Therms_Saved] > 20
-	"AB"
+		"AB"
 	elseif MCL_new_savings[i,:Tstat_Therms_Saved] > 20
 		"A"
 	elseif MCL_new_savings[i,:WH_Therms_Saved] > 20
@@ -203,24 +202,24 @@ if MCL_new_savings isa DataFrame
 	"""
 end
 
+# ╔═╡ 5c912102-9f38-41dc-841b-ecaee340f9a7
+MCL_new_savings[!,:Tstat_Therms_Saved] .> 20 |> length
+
+# ╔═╡ 85a9b9a1-fb6c-46ab-b61d-512b03515245
+MCL_new_savings[!,:WH_Therms_Saved] .> 20 |> length
+
 # ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
 if (MCL_new_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_new_savings |> names)
 	histogram(
 		select(MCL_new_savings, :Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings) |> Matrix,
 		title="New Estimated Therms Savings Histogram",
-		labels=[:Tstat_Therms_Saved :WH_Therms_Saved :Combined_Therms_Savings],
+		labels=string.(),
 		size=(800,400),
 	)
 end
 
-# ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
-MCL_new_savings_desc = if MCL_new_savings isa DataFrame
-	describe(MCL_new_savings,
-		[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
-		sum => :sum,	
-		cols=[:Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings, :Group
-	])
-end
+# ╔═╡ 14d803b0-3cbf-4c70-8150-0563fcc2946c
+
 
 # ╔═╡ d52bcf99-f303-4755-9f31-0238d504b3bc
 g = if MCL_new_savings isa DataFrame
@@ -334,8 +333,8 @@ $(leftright(
 
 # ╔═╡ 92877da7-6f6d-4ba0-ba18-4763214564b8
 if @isdefined MCL_df
-	heat_lowq, heat_highq = quantile(MCL_df[!,"WINTER_2020_THMS"], [low_q/100, high_q/100])
-	base_lowq, base_highq = quantile(MCL_df[!,"_2020_BASELOAD_THMS"], [low_q/100, high_q/100])
+	heat_lowq, heat_highq = quantile(MCL_df[!,"WINTER_2020_THMS"] |> skipmissing |> collect, [low_q/100, high_q/100])
+	base_lowq, base_highq = quantile(MCL_df[!,"_2020_BASELOAD_THMS"] |> skipmissing |> collect, [low_q/100, high_q/100])
 		
 	md"""
 	Selecting projects with `WINTER_2020_THMS` between __$heat_lowq__ and __$heat_highq__ and `_2020_BASELOAD_THMS` between __$base_lowq__ and __$base_highq__
@@ -408,6 +407,22 @@ if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
 	)
 end
 
+# ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
+MCL_new_savings_desc = if MCL_new_savings isa DataFrame
+	updown(
+		
+		describe(
+			MCL_new_savings,
+			[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
+			sum => :sum, length => :count,	
+			cols=[:Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings, :Group]
+		),	
+		
+		Resource("https://media1.tenor.com/images/875a4c4adac5f86913d5ab919b55bf80/tenor.gif?itemid=20821636")
+	)
+	
+end
+
 # ╔═╡ Cell order:
 # ╟─868cd960-ba5b-11eb-2c92-255e7e10725e
 # ╟─60dd45e8-3c31-4575-8739-a8d664aa58f3
@@ -427,8 +442,11 @@ end
 # ╟─0fad5851-fe23-4895-9194-dd1625c9abe5
 # ╟─6c53ca70-b96f-4e0d-862f-45b335092556
 # ╟─7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
+# ╟─5c912102-9f38-41dc-841b-ecaee340f9a7
+# ╠═85a9b9a1-fb6c-46ab-b61d-512b03515245
 # ╟─bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-# ╟─b7461faf-dc28-4f62-a43a-08870c0d83a1
+# ╠═b7461faf-dc28-4f62-a43a-08870c0d83a1
+# ╠═14d803b0-3cbf-4c70-8150-0563fcc2946c
 # ╟─d52bcf99-f303-4755-9f31-0238d504b3bc
 # ╟─b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
 # ╟─d42fabef-dd60-4056-af92-c4daacf79177
@@ -436,7 +454,7 @@ end
 # ╟─2a739049-a2d1-47e1-b52b-0911e352a05f
 # ╟─33e60c2d-3b1b-4ed8-9ec4-a0b574aff867
 # ╟─bde8d1eb-9c04-47e9-aa2b-12a3c844e19c
-# ╟─e9f7cd20-149e-42c4-83cf-d9b74dd4cd08
+# ╠═e9f7cd20-149e-42c4-83cf-d9b74dd4cd08
 # ╠═fcd2727a-1dfe-426b-9318-297ac7c98d2d
 # ╠═00c24ce5-62f0-4503-8204-b97eba3c1aa7
 # ╠═cdf4f394-da81-4bfa-ba55-be6a8bb6e3ca

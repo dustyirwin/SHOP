@@ -307,6 +307,11 @@ git-tree-sha1 = "1fd26bc48f96adcdd8823f7fc300053faf3d7ba1"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.9.9"
 
+[[HypertextLiteral]]
+git-tree-sha1 = "3cd97ad41c50d81e698ec625d52753556cab994e"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.7.0"
+
 [[IniFile]]
 deps = ["Test"]
 git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"

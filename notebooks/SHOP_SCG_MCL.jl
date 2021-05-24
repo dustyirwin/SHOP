@@ -179,10 +179,10 @@ MCL_new_savings = if @isdefined MCL_csv
 	df = @where(df, :WH_Therms_Saved .> aqsav_lower)
 		
 	df = @where(df, :WH_Therms_Saved .< aqsav_upper)  # setting upper limit.. keep?
-end;
+end
 
 # ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
-begin
+if MCL_new_savings isa DataFrame
 	MCL_new_savings[!,:Group] = [
 		
 	if MCL_new_savings[i,:Tstat_Therms_Saved] > 20 && MCL_new_savings[i,:WH_Therms_Saved] > 20
@@ -204,7 +204,7 @@ begin
 end
 
 # ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-if (@isdefined MCL_new_savings) && ("Combined_Therms_Savings" in MCL_new_savings |> names)
+if (MCL_new_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_new_savings |> names)
 	histogram(
 		select(MCL_new_savings, :Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings) |> Matrix,
 		title="New Estimated Therms Savings Histogram",
@@ -214,7 +214,7 @@ if (@isdefined MCL_new_savings) && ("Combined_Therms_Savings" in MCL_new_savings
 end
 
 # ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
-MCL_new_savings_desc = if @isdefined MCL_new_savings 
+MCL_new_savings_desc = if MCL_new_savings isa DataFrame
 	describe(MCL_new_savings,
 		[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
 		sum => :sum,	
@@ -223,11 +223,15 @@ MCL_new_savings_desc = if @isdefined MCL_new_savings
 end
 
 # ╔═╡ d52bcf99-f303-4755-9f31-0238d504b3bc
-g = groupby(MCL_new_savings, :Group)
+g = if MCL_new_savings isa DataFrame
+	groupby(MCL_new_savings, :Group)
+end
 
 # ╔═╡ b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
 with_terminal() do
-	combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
+	if !(g isa Nothing)
+		combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
+	end
 end
 
 # ╔═╡ d42fabef-dd60-4056-af92-c4daacf79177

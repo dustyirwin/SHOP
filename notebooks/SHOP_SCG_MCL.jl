@@ -35,7 +35,7 @@ begin
 	import DarkMode
 	
 	md"""
-	# Napkin Calcs📜 
+	# 📜 Napkin Calcs 
 	
 	Hi McGee! This is an experimental tool use with caution ⚠️ 
 	"""
@@ -44,13 +44,17 @@ end
 # ╔═╡ 60dd45e8-3c31-4575-8739-a8d664aa58f3
 md"""
 ## Upload SCG MCL data
+
+Latest MCL: 
+
 Column header names will be normalized. Descriptions will be provided below.
 - MCL (SoCalGas) data input: $(@bind SCG_csv FilePicker())
 """
 
 # ╔═╡ 11c11ff9-5a14-4fe3-ab53-a65111060115
 MCL_desc = if !isempty(SCG_csv["data"])
-	MCL_df = CSV.File(UInt8.(SCG_csv["data"]) |> IOBuffer, normalizenames=true) |> DataFrame	
+	MCL_csv = CSV.File(UInt8.(SCG_csv["data"]) |> IOBuffer, normalizenames=true) 
+	MCL_df = MCL_csv |> DataFrame	
 	describe(MCL_df, :all, sum=>:sum)
 end
 
@@ -100,15 +104,13 @@ if @isdefined MCL_df
 	select!(MCL_df, MCL_keepcols)
 end
 
-# ╔═╡ 2945046d-0107-4c6a-b65a-1a2a804d79b9
-md"""
-## Customer Targeting
-"""
-
 # ╔═╡ a4cda47d-907b-4510-b68e-63b87d78ae02
 if !isempty(SCG_csv["data"])
 	md"""
 	## Measure Savings Calculation
+	
+	The savings table supplied by Ahmed: [compiled_savings.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EVO2S2yDc8JElpRUqoEjr-IBiRDIAKo4cnivWPOKjYazjw?e=z62pu5) 
+	
 	Upload a measure savings table below to calculate measure savings using the measure table
 	- Savings table: $(@bind savings_table_csv FilePicker())
 	"""
@@ -119,22 +121,114 @@ savings_table_df = if (@isdefined savings_table_csv) && (!isempty(savings_table_
 	CSV.File(UInt8.(savings_table_csv["data"]) |> IOBuffer, normalizenames=true) |> DataFrame
 end
 
-# ╔═╡ 5fc68bf5-4fd6-4aab-ac8d-8d5e163558df
-md"""
-##### Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `swh`, `wop`, and `tstat` columns
-"""
-
 # ╔═╡ a71665f4-0951-44f7-969e-d933bed20f62
-md"## Measure Savings Results"
+md"""
+__Joining `MCL_targets` and `savings_table_df` on `:CEC_ZONE` and generating `swh`, `wop`, and `tstat` columns__
+
+## Measure Savings Results
+"""
 
 # ╔═╡ 0fad5851-fe23-4895-9194-dd1625c9abe5
 md"""
-#### ⚠️ Overriding estimated savings calculation with 7% for Smart Thermostats and 4% for Aquanta WH Controllers, and then discounted by 50%
- - smart thermostat savings $(@bind therm_pct NumberField(0:100,default=7)) %
- - Aquanta savings $(@bind aquanta_pct NumberField(0:100,default=4)) %
- - savings reduction $(@bind savings_reduction NumberField(0:100,default=50)) %
- - propensity score $(@bind propensity NumberField(0:100,default=1.5)) %
+
+# ⚠️ Measure Savings ReCalc
+
+1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=9999)) therms.
+- __Should we take an avg of all available years?__
+1. Recalculating estimated savings based on 7% of heating load for Smart Thermostats and 4% for Aquanta WH Controllers
+1. Discounting savings by 50%.
+
+New savings estimate parameters:
+- Using June-Sept total usage as `Baseload_Therms`
+- Smart thermostat savings = $(@bind therm_pct NumberField(0:100,default=7)) % of `Heating_therms` * `savings_reduction`
+- Aquanta savings = $(@bind aquanta_pct NumberField(0:100,default=4)) % of `Baseload_Therms` * `savings_reduction`
+- Savings reduction factor = $(@bind savings_reduction NumberField(0:100,default=50)) %
+- Propensity score = $(@bind propensity NumberField(0:100,default=1.5)) %
+
+
+Group qualifications:
+- Group A: Estimated Aquanta Savings is at least $(@bind aqsav_lower NumberField(1:999, default=20.)) therms and less than $(@bind aqsav_upper NumberField(1:999, default=100.)) therms
+- Group B: Estimated Smart Thermostat Savings is at least $(@bind tssav_lower NumberField(1:999, default=20.)) therms and less than $(@bind tssav_upper NumberField(1:999, default=100.)) therms
+- Group AB: Meets both group requirements.
+- Group C: Meets neither group requirements.
+
+
+**Targetting and savings calculation details may be found in the [Targeting for SHOP program](https://icfonline-my.sharepoint.com/:w:/g/personal/33648_icf_com/EUiH4sP72QNKuGLEADCFb5EB0rd-NmRyTSzf7cRKorFNHg?e=pa4Puu) document**
 """
+
+# ╔═╡ 6c53ca70-b96f-4e0d-862f-45b335092556
+MCL_new_savings = if @isdefined MCL_csv
+	df = MCL_csv |> DataFrame
+	
+	df[!,:Heating_Therms] .= df[!,"_2020_ANNUAL"] .- 12 .* mean([ df[!,"_202006"], df[!,"_202007"], df[!,"_202008"], df[!,"_202009"] ])
+	
+	df[!,:Baseload_Therms] .= df[!,"_2020_ANNUAL"] .- df[!,:Heating_Therms]
+	
+	df = @where(df, :Heating_Therms .> heat_therms_lower, :Heating_Therms .< heat_therms_upper)
+	
+	df[!,:Tstat_Therms_Saved] = df[!,:Heating_Therms] * (therm_pct / 100) * (savings_reduction / 100)
+    
+	df[!,:WH_Therms_Saved] = df[!,:Baseload_Therms] * (aquanta_pct / 100) * (savings_reduction / 100)
+	
+	df[!,:Combined_Therms_Savings] = df[!,:Tstat_Therms_Saved] .+ df[!,:WH_Therms_Saved]
+	
+	df = @where(df, :Tstat_Therms_Saved .> tssav_lower)
+	
+	df = @where(df, :Tstat_Therms_Saved .< tssav_upper)  # setting upper limit.. keep?
+	
+	df = @where(df, :WH_Therms_Saved .> aqsav_lower)
+		
+	df = @where(df, :WH_Therms_Saved .< aqsav_upper)  # setting upper limit.. keep?
+end;
+
+# ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
+begin
+	MCL_new_savings[!,:Group] = [
+		
+	if MCL_new_savings[i,:Tstat_Therms_Saved] > 20 && MCL_new_savings[i,:WH_Therms_Saved] > 20
+	"AB"
+	elseif MCL_new_savings[i,:Tstat_Therms_Saved] > 20
+		"A"
+	elseif MCL_new_savings[i,:WH_Therms_Saved] > 20
+		"B"
+	else
+		"C"
+	end for i in 1:length(MCL_new_savings[!,:GNN_ID])
+				
+	]
+	
+	md"""
+	## Customer Grouping 
+	Collecting customers into AB, A, and B groupings
+	"""
+end
+
+# ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
+if (@isdefined MCL_new_savings) && ("Combined_Therms_Savings" in MCL_new_savings |> names)
+	histogram(
+		select(MCL_new_savings, :Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings) |> Matrix,
+		title="New Estimated Therms Savings Histogram",
+		labels=[:Tstat_Therms_Saved :WH_Therms_Saved :Combined_Therms_Savings],
+		size=(800,400),
+	)
+end
+
+# ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
+MCL_new_savings_desc = if @isdefined MCL_new_savings 
+	describe(MCL_new_savings,
+		[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
+		sum => :sum,	
+		cols=[:Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings, :Group
+	])
+end
+
+# ╔═╡ d52bcf99-f303-4755-9f31-0238d504b3bc
+g = groupby(MCL_new_savings, :Group)
+
+# ╔═╡ b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
+with_terminal() do
+	combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
+end
 
 # ╔═╡ d42fabef-dd60-4056-af92-c4daacf79177
 # MCL Tier Counts (requires a Tiered and Grouped MCL)
@@ -161,7 +255,18 @@ Tier_Group_counts = if (@isdefined MCL_df) && ("Tier" in names(MCL_df)) && ("Gro
 end
 
 # ╔═╡ 3d2b922c-33d2-46e9-9729-6087cd0d3bcb
-md"# MCL Data Export"
+md"""
+# MCL Data Export
+Download the new MCL as a CSV!
+"""
+
+# ╔═╡ 2a739049-a2d1-47e1-b52b-0911e352a05f
+if !(MCL_new_savings isa Nothing)
+	out_df = select(MCL_new_savings, MCL_keepcols)
+	filename = tempdir() * randstring(10) * ".csv"
+	CSV.write(filename, out_df)
+	DownloadButton(read(filename), basename(filename))
+end
 
 # ╔═╡ 33e60c2d-3b1b-4ed8-9ec4-a0b574aff867
 """<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>""" |> HTML
@@ -212,11 +317,16 @@ leftright(a, b; width=600) = """
 </table>
 """ |> HTML
 
-# ╔═╡ c00c8c6e-a1a3-4fdf-9dc5-bbd3bcc20aa2
-leftright(
+# ╔═╡ 2945046d-0107-4c6a-b65a-1a2a804d79b9
+md"""
+## Customer Targeting
+Targeting and savings estimation methods used based on Ahmed's [savings_calculations.R](https://icfonline-my.sharepoint.com/:u:/g/personal/33648_icf_com/EYXit2vgTO9HjXsu6ShU4MgBF4SUhPkqU16NRtKQS8eQCg?e=cnH78I) script
+
+$(leftright(
 	md"Use Quantiles? $(@bind use_quantiles CheckBox(default=true))",
 	md"Quantile Range $(@bind low_q NumberField(0:100,default=50))% - $(@bind high_q NumberField(0:100,default=70))%"
-	)
+	))
+"""
 
 # ╔═╡ 92877da7-6f6d-4ba0-ba18-4763214564b8
 if @isdefined MCL_df
@@ -224,10 +334,7 @@ if @isdefined MCL_df
 	base_lowq, base_highq = quantile(MCL_df[!,"_2020_BASELOAD_THMS"], [low_q/100, high_q/100])
 		
 	md"""
-	Selecting projects with:
-	- `WINTER_2020_THMS` between __$heat_lowq__ and __$heat_highq__ 
-	and 
-	- `_2020_BASELOAD_THMS` between __$base_lowq__ and __$base_highq__
+	Selecting projects with `WINTER_2020_THMS` between __$heat_lowq__ and __$heat_highq__ and `_2020_BASELOAD_THMS` between __$base_lowq__ and __$base_highq__
 	"""
 end
 
@@ -248,7 +355,7 @@ MCL_targets_desc = if @isdefined MCL_df
 end
 
 # ╔═╡ db159774-fe16-45ed-8f34-afbd68150f54
-MCL_savings_desc = if (@isdefined MCL_targets) && !isempty(savings_table_csv["data"])
+if (@isdefined MCL_targets) && !isempty(savings_table_csv["data"])
 	MCL_savings = leftjoin(MCL_targets, @where(savings_table_df, :type .== "sh"), on=:CEC_ZONE)
 	
 	@transform!(MCL_savings,
@@ -260,8 +367,6 @@ MCL_savings_desc = if (@isdefined MCL_targets) && !isempty(savings_table_csv["da
 	MCL_savings[!,:savings] = @with MCL_savings begin
 		:swh .+ :wop .+ :tstat .+ :tcv .+ :spout
 	end
-	
-	describe(MCL_savings, :all, sum=>:sum)
 end
 
 # ╔═╡ ed36453a-fda8-45d5-93f8-7828be779317
@@ -272,85 +377,6 @@ if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
 		labels=permutedims(select(MCL_savings, "savings") |> names),
 		size=(800,400), 
 	)
-end
-
-# ╔═╡ f44c29c7-c23b-40ee-8099-e65e1223d57c
-# total savings
-if @isdefined MCL_savings
-	MCL_savings[!,:savings] |> sum
-end
-
-# ╔═╡ 6c53ca70-b96f-4e0d-862f-45b335092556
-if @isdefined MCL_savings
-	
-	MCL_savings[!,"Tstat Therms Saved"] = MCL_savings[!,:WINTER_2020_THMS] * (therm_pct/100) * (savings_reduction/100)
-    MCL_savings[!,"WH Therms Saved"] .= MCL_savings[!,:_2020_BASELOAD_THMS] * (aquanta_pct/100) * (savings_reduction/100)
-	MCL_savings[!,"Combined Therms Savings"] = MCL_savings[!,"Tstat Therms Saved"] .+ MCL_savings[!,"WH Therms Saved"]
-	
-	md"""
-	Calculating savings...
-	"""
-end
-
-# ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-if (@isdefined MCL_savings) && ("Combined Therms Savings" in MCL_savings |> names)
-	histogram([
-		MCL_savings[!,"Tstat Therms Saved"],
-		MCL_savings[!,"WH Therms Saved"],	
-		], 
-		title="New Estimated Therms Savings Histogram",
-		labels=permutedims(select(MCL_savings, "Tstat Therms Saved", "WH Therms Saved") |> names),
-		size=(800,400), 
-	)
-end
-
-# ╔═╡ 9cf73d5e-e2c4-4ae7-980c-7d92463355ec
-# total savings
-if @isdefined MCL_savings
-	MCL_savings[!,"Combined Therms Savings"] |> sum
-end
-
-# ╔═╡ 1bbf2188-f34e-43fc-a35c-8d488fc8f8c7
-MCL_savings[!,"Tstat Therms Saved"] |> maximum
-
-# ╔═╡ 8e918f3d-2274-40eb-8344-3c122a175b3d
-MCL_savings[!,"WH Therms Saved"] |> maximum
-
-# ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
-begin
-	MCL_savings[!,"Group"] = [
-		
-	if MCL_savings[i,"Tstat Therms Saved"] > 20 && MCL_savings[i,"WH Therms Saved"] > 20
-	"AB"
-	elseif MCL_savings[i,"Tstat Therms Saved"] > 20
-		"A"
-	elseif MCL_savings[i,"WH Therms Saved"] > 20
-		"B"
-	else
-		"C"
-	end for i in 1:length(MCL_savings[!,:GNN_ID])
-
-	]
-	
-	md"""
-	## Customer Grouping 
-	Collecting customers into AB, A, and B groupings
-	"""
-end
-
-# ╔═╡ d52bcf99-f303-4755-9f31-0238d504b3bc
-g = groupby(MCL_savings, :Group)
-
-# ╔═╡ b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
-with_terminal() do
-	combine(describe, g, ungroup = false) |> (t -> show(t, allrows = true, allgroups = true))
-end
-
-# ╔═╡ 2a739049-a2d1-47e1-b52b-0911e352a05f
-if !(MCL_savings isa Nothing)	
-	filename = tempdir() * randstring(10) * ".csv"
-	CSV.write(filename, MCL_savings)
-	DownloadButton(read(filename), basename(filename))
 end
 
 # ╔═╡ df2dddb0-1638-46aa-a193-50cbae6ebab4
@@ -365,6 +391,19 @@ updown(a, b; width=nothing) = """
 </table>
 """ |> HTML
 
+# ╔═╡ d2a6550a-a9aa-45fc-9435-92b4d9e016ab
+if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
+	savings = MCL_savings[!,:savings] |> sum 
+	
+	updown(
+		describe(MCL_savings,
+			[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
+			sum => :sum,
+			cols=["savings"]),
+		Resource("https://mashable-evaporation-wordpress.s3.amazonaws.com/2013/07/Dr.-Who.gif")
+	)
+end
+
 # ╔═╡ Cell order:
 # ╟─868cd960-ba5b-11eb-2c92-255e7e10725e
 # ╟─60dd45e8-3c31-4575-8739-a8d664aa58f3
@@ -373,28 +412,24 @@ updown(a, b; width=nothing) = """
 # ╟─d7598973-beb7-44b1-835b-3527fdc70668
 # ╟─4e1fb60a-85dc-4831-9132-02d3eba6ea95
 # ╟─2945046d-0107-4c6a-b65a-1a2a804d79b9
-# ╟─c00c8c6e-a1a3-4fdf-9dc5-bbd3bcc20aa2
 # ╟─92877da7-6f6d-4ba0-ba18-4763214564b8
 # ╟─ed0d5d8b-345e-49bf-bcba-e6f4b19b8896
 # ╟─a4cda47d-907b-4510-b68e-63b87d78ae02
 # ╟─aa5bffb1-f412-4d52-b132-379b0a014c4b
-# ╟─5fc68bf5-4fd6-4aab-ac8d-8d5e163558df
-# ╟─db159774-fe16-45ed-8f34-afbd68150f54
 # ╟─a71665f4-0951-44f7-969e-d933bed20f62
-# ╠═ed36453a-fda8-45d5-93f8-7828be779317
-# ╠═f44c29c7-c23b-40ee-8099-e65e1223d57c
+# ╟─db159774-fe16-45ed-8f34-afbd68150f54
+# ╟─ed36453a-fda8-45d5-93f8-7828be779317
+# ╟─d2a6550a-a9aa-45fc-9435-92b4d9e016ab
 # ╟─0fad5851-fe23-4895-9194-dd1625c9abe5
 # ╟─6c53ca70-b96f-4e0d-862f-45b335092556
-# ╟─bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-# ╠═9cf73d5e-e2c4-4ae7-980c-7d92463355ec
-# ╠═1bbf2188-f34e-43fc-a35c-8d488fc8f8c7
-# ╠═8e918f3d-2274-40eb-8344-3c122a175b3d
 # ╟─7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
+# ╟─bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
+# ╟─b7461faf-dc28-4f62-a43a-08870c0d83a1
 # ╟─d52bcf99-f303-4755-9f31-0238d504b3bc
 # ╟─b7f8b1b2-aed0-4c8d-9a88-4a8c948c734c
 # ╟─d42fabef-dd60-4056-af92-c4daacf79177
 # ╟─3d2b922c-33d2-46e9-9729-6087cd0d3bcb
-# ╠═2a739049-a2d1-47e1-b52b-0911e352a05f
+# ╟─2a739049-a2d1-47e1-b52b-0911e352a05f
 # ╟─33e60c2d-3b1b-4ed8-9ec4-a0b574aff867
 # ╟─bde8d1eb-9c04-47e9-aa2b-12a3c844e19c
 # ╟─e9f7cd20-149e-42c4-83cf-d9b74dd4cd08

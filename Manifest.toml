@@ -303,9 +303,9 @@ version = "1.0.2"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
-git-tree-sha1 = "b855bf8247d6e946c75bb30f593bfe7fe591058d"
+git-tree-sha1 = "1fd26bc48f96adcdd8823f7fc300053faf3d7ba1"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.9.8"
+version = "0.9.9"
 
 [[IniFile]]
 deps = ["Test"]
@@ -552,9 +552,9 @@ version = "0.4.0"
 
 [[OffsetArrays]]
 deps = ["Adapt"]
-git-tree-sha1 = "47b443d2ccc8297a4c538f55f8fd828ad58599ab"
+git-tree-sha1 = "c3a3d8d45fb533e88e3ab97748d40ee85711d988"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "1.8.0"
+version = "1.9.0"
 
 [[Ogg_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]

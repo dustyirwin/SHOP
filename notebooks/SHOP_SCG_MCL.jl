@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.6
 
 using Markdown
 using InteractiveUtils
@@ -35,7 +35,7 @@ begin
 	
 	import DarkMode
 	
-	plotly()
+	gr()
 	
 	md"""
 	# 📜 SHOP Napkin :: SCG MCL
@@ -50,8 +50,6 @@ md"""
 **(pre-intervention data?)**
 
 - [Old_MCL.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EW2KFBNs449MmM_yfWI3BjcBYtJndy1mp7LTnqBhVqMGMw?e=36UXuh) has data back to 2018, no monthly data
-!!! warning 
-	do we have monthly data for 2018? Would this help with winter / baseline usage assumptions?
  - [mcl_2020.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EecHDcsSvkpLjDyo4aS3B6sBwnTNylXMFsgqfNXSBkc_yg?e=LTucR7) file has monthly data from 2019/12 - 2021/01
  - [ICF\_MCL\_MAY2021.csv](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQEmFBJuiB9DikSXEGR-1BEBHLySqZYwuoCd1amrFrZQZw?e=Sbh6ol) file has monthly data from 2020/01 - 2021/02
 - [MCL\_Combined\_201912-202102-slim](https://icfonline-my.sharepoint.com/:x:/g/personal/33648_icf_com/EQsqOS5uWS9Ft1oIZAsMaWwBtEAigsOndoLAeO7IZCig8w?e=DTaAsU) contains all available monthly data
@@ -96,71 +94,98 @@ md"""
 ## Measure Savings Results
 """
 
-# ╔═╡ 0fad5851-fe23-4895-9194-dd1625c9abe5
+# ╔═╡ 22ce9c38-2a4a-49cf-8f8c-5dfcfee8788f
+html"""<br><br><br><br><br><br><br>"""
+
+# ╔═╡ 70bf7cd4-4f22-4757-88ee-56b9ae90be04
 md"""
-
-## Measure Savings ReCalc
-
-1. Retargetting customers with 2020 `Heating_Therms` usage between $(@bind heat_therms_lower NumberField(1:1000, default=300)) and $(@bind heat_therms_upper NumberField(1:1000, default=99999)) therms.
-!!! warning 
-	Enforce a cap on `Heating Therms`? Why are some homes using so much gas?
-
-- `Baseload Therms` is now defined as the average monthly therms usage of June, July, Aug and Sept.
-!!! warning
-	Should we take an avg of all available years for baseline / heating therms values?
-!!! warning
-	Should we impose and upper limit on Heating_therms usage? Are we including bad building types?
-1. Recalculating estimated savings based on 7% of heating load for Smart Thermostats and 4% for Aquanta WH Controllers
-1. Discounting savings by 50%.
-
-New savings estimate parameters:
-- Using June-Sept 2020 total usage as `Baseload_Therms`
-- Smart thermostat savings = $(@bind therm_pct NumberField(0:100,default=7)) % of `Heating_therms` * `savings_reduction`
-- Aquanta savings = $(@bind aquanta_pct NumberField(0:100,default=4)) % of `Baseload_Therms` * `savings_reduction`
-- Savings reduction factor = $(@bind savings_reduction NumberField(0:100,default=50)) %
-- Propensity score = $(@bind propensity NumberField(0:100,default=1.5)) %
-
-
-Grouping qualifications:
-- Tier I threshold: $(@bind T1_thresh NumberField(1:99999, default=20)) therms savings for any measure
-- Tier II threshold: $(@bind T2_thresh NumberField(1:99999, default=100)) total `Combined Therms Savings`
-!!! warning
-	Should the Tier II metric be cost-driven?
-!!! warning
-	Place a cap on therms savings? How much can one Aquanta realistically save in a single family home?
-
-
-- Group A: Estimated Aquanta Savings meets Tier I threshold.
-- Group B: Estimated Smart Thermostat Savings meets Tier I threshold.
-- Group AB: Meets both group requirements.
-- Group C: Meets neither group requirements.
-
-
 !!! note
 	Targetting and savings calculation details may be found in the [Targeting for SHOP program](https://icfonline-my.sharepoint.com/:w:/g/personal/33648_icf_com/EUiH4sP72QNKuGLEADCFb5EB0rd-NmRyTSzf7cRKorFNHg?e=pa4Puu) document
+	
+	`Baseload Therms` is now defined as the average monthly therms usage of June, July, Aug and Sept.
+	
+	This [U. C. Irvine paper](https://www.physics.uci.edu/~silverma/actions/HouseholdEnergy.html#:~:text=With%20an%20average%20of%20400,8%2C000%20kWh%20equivalent%20for%20gas.) cites 400 therms as the average annual gas consumption per household in Southern California
 """
 
+# ╔═╡ 0fad5851-fe23-4895-9194-dd1625c9abe5
+md"""
+## ⚠️ Customer ReTargeting
+Retargetting customers with: 
+- 2020 `Heating_Therms` above $(@bind heat_therms_lower NumberField(1:1000, default=200))
+"""
+
+# ╔═╡ cc369e9c-0af1-455c-aa20-b3d7927e0e18
+md"""
+## ⚠️ Measure Savings ReCalc
+New estimate parameters:
+- Using June-Sept 2020 total usage as `Baseload_Therms`
+- Smart thermostat savings = $(@bind therm_pct NumberField(0:100,default=7)) % of `Heating_therms` capped @ $(@bind tstat_cap NumberField(0:999, default=50)) therms
+- Aquanta savings = $(@bind aquanta_pct NumberField(0:100,default=4)) % of `Baseload_Therms` capped @ $(@bind aquanta_cap NumberField(0:999, default=50)) therms
+- Propensity score = $(@bind propensity NumberField(0:100,default=1.5)) %
+"""
+
+# ╔═╡ 77dba1dd-c22a-48c7-a1cc-0d95c62b249f
+begin
+	Tiers = [1, 2]
+	Groups = ["AB", "A", "B"]
+
+	md"""
+	Tier and Grouping qualifications:
+	- Tier I threshold: above $(@bind T1_thresh NumberField(1:99999, default=20)) therms savings for either measure
+	- Tier II threshold: above the savings cap for either measure
+
+
+	- Group A: Estimated Aquanta Savings meets Tier I threshold
+	- Group B: Estimated Smart Thermostat Savings meets Tier I threshold
+	- Group AB: Meets both group requirements
+	- Group C: Meets neither group requirements
+	"""
+end
+
 # ╔═╡ 6c53ca70-b96f-4e0d-862f-45b335092556
-MCL_new_savings = if @isdefined MCL_csv
-	df = MCL_csv |> DataFrame
+if @isdefined MCL_df
+	df = MCL_df
 	
 	df[!,:Heating_Therms] .= df[!,"_2020_ANNUAL"] .- 12 .* mean([ df[!,"_202006"], df[!,"_202007"], df[!,"_202008"], df[!,"_202009"] ])
 	
 	df[!,:Baseload_Therms] .= df[!,"_2020_ANNUAL"] .- df[!,:Heating_Therms]
 	
-	df = @where(df, :Heating_Therms .> heat_therms_lower, :Heating_Therms .< heat_therms_upper)
+	df = @where(df, :Heating_Therms .> heat_therms_lower)
 	
-	df[!,:Tstat_Therms_Saved] = df[!,:Heating_Therms] * (therm_pct / 100) * (savings_reduction / 100)
-    
-	df[!,:WH_Therms_Saved] = df[!,:Baseload_Therms] * (aquanta_pct / 100) * (savings_reduction / 100)
+	df[!,:Tstat_Therms_Saved] = df[!,:Heating_Therms] * (therm_pct / 100) 
+    df[!,:Tstat_Therms_Saved] = [ 
+		if savings > tstat_cap
+			tstat_cap 
+		elseif savings > 20
+			savings
+		else
+			0 
+		end for savings in df[!,:Tstat_Therms_Saved] ]
+	
+	df[!,:WH_Therms_Saved] = df[!,:Baseload_Therms] * (aquanta_pct / 100)
+	df[!,:WH_Therms_Saved] = [ 
+		if savings > aquanta_cap
+			aquanta_cap 
+		elseif savings > 20
+			savings
+		else
+			0 
+		end for savings in df[!,:WH_Therms_Saved] ]
 	
 	df[!,:Combined_Therms_Savings] = df[!,:Tstat_Therms_Saved] .+ df[!,:WH_Therms_Saved]
 	
-	df
-end;
+	MCL_new_savings = unique(df, :CUST_EMAIL_ADDR)
+	
+	md"""
+	!!! calc "Calculation Completed"
+		Removed records with duplicate CUST_IDs
+	
+		Enforced savings caps
+	"""
+end
 
 # ╔═╡ 7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
-if MCL_new_savings isa DataFrame
+if (@isdefined MCL_new_savings) && (MCL_new_savings isa DataFrame)
 	MCL_new_savings[!,:Group] = [
 		
 	if MCL_new_savings[i,:Tstat_Therms_Saved] > T1_thresh && MCL_new_savings[i,:WH_Therms_Saved] > T1_thresh
@@ -175,102 +200,122 @@ if MCL_new_savings isa DataFrame
 				
 	]
 	
-	MCL_new_savings[!,:Tier] = [ savings > T2_thresh ? 2 : 1 for savings in MCL_new_savings[!,:Combined_Therms_Savings] ]
+	# finding Tier 1 customers
+	MCL_new_savings[!,:Tier] = [ savings .> T1_thresh ? 1 : 0 for savings in MCL_new_savings[!,:Tstat_Therms_Saved] ]
+	MCL_new_savings[!,:Tier] = [ savings .> T1_thresh ? 1 : 0 for savings in MCL_new_savings[!,:WH_Therms_Saved] ]
 	
-	MCL_grouped_savings = @where(MCL_new_savings, :Group .!= "C")
+	# finding Tier 2 customers
+	MCL_new_savings[!,:Tier] = [ savings .> tstat_cap ? 1 : 0 for savings in MCL_new_savings[!,:Tstat_Therms_Saved] ]
+	MCL_new_savings[!,:Tier] = [ savings .> aquanta_cap ? 1 : 0 for savings in MCL_new_savings[!,:WH_Therms_Saved] ]
 	
 	md"""
-	## Customer Grouping 
-	Collecting customers into AB, A, and B groups and Tier I and Tier II rankings. Discarding group C.
+	!!! group "Grouping Completed"
 	"""
 end
 
-# ╔═╡ 4cf2930e-7427-490e-a525-cec1d3d0ae09
-#@where(MCL_grouped_savings, :Tier .== 1) |> eachrow |> length
+# ╔═╡ 0be5ddfc-079b-47d4-82de-439ad9c4ec39
 
-# ╔═╡ 18eae425-5aed-4149-9705-9795f949f789
-#@where(MCL_grouped_savings, :Tier .== 2) |> eachrow |> length
+
+# ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
+MCL_new_savings_desc = if (@isdefined MCL_new_savings) && (MCL_new_savings isa DataFrame)	
+	describe(
+		MCL_new_savings,
+		[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
+		sum => :sum,
+		cols=[:Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings, :Group]
+	)
+end
 
 # ╔═╡ bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
-if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_grouped_savings |> names)
-	histogram(
-		select(MCL_grouped_savings, :Tstat_Therms_Saved, :WH_Therms_Saved) |> Matrix,
+if (@isdefined MCL_new_savings) && (MCL_new_savings isa DataFrame) && ("Combined_Therms_Savings" in MCL_new_savings |> names)
+	StatsPlots.histogram(
+		select(MCL_new_savings, :Tstat_Therms_Saved, :WH_Therms_Saved) |> Matrix,
 		title="New Therms Savings Histogram",
 		labels=string.([:Tstat_Therms_Saved :WH_Therms_Saved]),
 		size=(800,400),
 	)
-end
-
-# ╔═╡ 725ece46-1b76-4f28-8cd7-4856dc892b40
-if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
-	mean_therm_savings_per_home = round( MCL_grouped_savings[!,:Combined_Therms_Savings] |> mean, digits=2)
-	total_therm_savings = round( MCL_grouped_savings[!,:Combined_Therms_Savings] |> sum, digits=2)
-	program_savings = round( total_therm_savings * propensity / 100, digits=2)
-	
-	ABs = @where(MCL_grouped_savings, :Group .== "AB")
-	As = @where(MCL_grouped_savings, :Group .== "A")
-	Bs = @where(MCL_grouped_savings, :Group .== "B")
-	
-	ABs_no_email = (unique(ABs, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
-	As_no_email = (unique(As, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
-	Bs_no_email = (unique(Bs, :CUST_EMAIL_ADDR)[!,:CUST_EMAIL_ADDR] |> length) - 1  # -1 for "NA"
-	
-	AB_count = round( ABs[!,:Group] |> length, digits=2)
-	A_count = round( As[!,:Group] |> length, digits=2)
-	B_count = round( Bs[!,:Group] |> length, digits=2)
-	
-	mean_AB_savings = round( ABs[!,:Combined_Therms_Savings] |> mean, digits=2)
-	mean_A_savings = round( As[!,:Combined_Therms_Savings] |> mean, digits=2)
-	mean_B_savings = round( Bs[!,:Combined_Therms_Savings] |> mean, digits=2)
-	
-	sum_AB_savings = round( ABs[!,:Combined_Therms_Savings] |> sum, digits=2)
-	sum_A_savings = round( As[!,:Combined_Therms_Savings] |> sum, digits=2)
-	sum_B_savings = round( Bs[!,:Combined_Therms_Savings] |> sum, digits=2)
 end;
 
+# ╔═╡ 5d5c58b6-1a57-4111-b1cf-d1c9e50e9e89
+if @isdefined MCL_new_savings
+	MCL_new_savings[!,:SVC_ADDR_FULL] = MCL_new_savings[!,:SVC_ADDR1] .* MCL_new_savings[!,:SVC_ADDR2] .* MCL_new_savings[!,:SVC_CITY] .* string.(MCL_new_savings[!,:SVC_ZIP]) .* MCL_new_savings[!,:SVC_ZIP9] 
+	
+	md"""
+	!!! note
+		Created `SVC_ADDR_FULL` column in `MCL_grouped_savings` dataframe
+	"""
+end
+
+# ╔═╡ 13fd7bbd-d78b-4b08-ad5d-2425fb0c4ecd
+if @isdefined MCL_new_savings
+	s = Dict{Symbol,Any}(
+		Symbol("T$tier$group") => Dict{Symbol,Any}(	
+			:df=>@where(
+				MCL_new_savings, 
+				:Tier .== tier, 
+				:Group .== group)
+			) for tier in Tiers, group in Groups 
+		)
+	
+	for k in keys(s)
+		s[k][:savings_mean] = round( s[k][:df][!,:Combined_Therms_Savings] |> mean, digits=2)
+		s[k][:savings_total] = round( s[k][:df][!,:Combined_Therms_Savings] |> sum, digits=2)
+		s[k][:customer_count] = round( s[k][:df][!,:CUST_ID] |> unique |> length, digits=2)
+		s[k][:email_count] = round( s[k][:df][!,:CUST_EMAIL_ADDR] |> unique |> length, digits=2)
+		s[k][:address_count] = round( s[k][:df][!,:SVC_ADDR_FULL] |> unique |> length, digits=2)
+	end
+
+		if !(:program_savings in keys(s))
+		s[:mean_therm_savings_per_home] = round( MCL_new_savings[!,:Combined_Therms_Savings] |> mean, digits=2)
+		s[:total_therm_savings] = round( MCL_new_savings[!,:Combined_Therms_Savings] |> sum, digits=2)
+		s[:program_savings] = round( MCL_new_savings[!,:Combined_Therms_Savings] * propensity / 100 |> sum, digits=2)
+	end
+	
+	md"""
+	!!! stats "Program Statistics Generated"
+		Results are broken out by Tier and Group
+	"""
+end
+
 # ╔═╡ 658132e8-9cb1-4e02-a4d0-3970d8180bad
-if (@isdefined MCL_grouped_savings) 
+if (@isdefined MCL_new_savings) 
 md"""
 
-# Program Savings Stats
+## Program Savings Stats
 
-- Program therms savings (propensity of 1.5%) = $program_savings
-- Total therms savings = $total_therm_savings
-- Mean therms saved per home (are these only single-family residential homes?) per year = $mean_therm_savings_per_home
-
-	
-### Tier I & II
-	
-- AB count = $AB_count
-- ABs without email addresses = $ABs_no_email
-- AB mean savings = $mean_AB_savings
-- AB total savings = $sum_AB_savings
-
-
-- A count = $A_count
-- As without email = $As_no_email
-- A mean savings = $mean_A_savings
-- A total savings = $sum_A_savings
-
-	
-- B count = $B_count
-- Bs without email = $Bs_no_email
-- B mean savings = $mean_B_savings
-- B total savings = $sum_B_savings
-
-	
-### Tier I
-	
-### Tier II
-
-	
+- Program therms savings (propensity of 1.5%) = $(s[:total_therm_savings] * propensity / 100)
+- Total therms savings = $(s[:total_therm_savings])
+- Mean therms saved per home (are these only single-family residential homes?) per year = $(s[:mean_therm_savings_per_home])
 """
 end
+
+# ╔═╡ 947d8047-0b67-4e35-9780-c0945ddb8e48
+# ~$11 per therm to ICF from SoCalGas
+# 3500 participants ~ 65 therms each
+# 350K potential customers with email and/or address
 
 # ╔═╡ 3d2b922c-33d2-46e9-9729-6087cd0d3bcb
 md"""
 ## Data Export
 Download MCL\_grouped\_savings dataframe as a CSV? $(@bind download_csv CheckBox(default=false))
+"""
+
+# ╔═╡ 92603658-e437-49ef-8136-3c76b064ca67
+md"""
+## Outstanding questions
+!!! warning
+	Why are some homes using so much gas? MANSIONS!
+	
+	Should we take an avg of all available years for baseline / heating therms values?
+	
+	Should the Tier II metric be cost-driven?
+"""
+
+# ╔═╡ 69959e4e-83fe-47b2-8c6e-1d75da91b19d
+md"""
+## Outstanding issues
+!!! warning
+	Check to make sure emails aren't being tossed out with duplicate customer records
 """
 
 # ╔═╡ 2a739049-a2d1-47e1-b52b-0911e352a05f
@@ -311,6 +356,9 @@ PlutoUI.TableOfContents()
 # ╔═╡ cdf4f394-da81-4bfa-ba55-be6a8bb6e3ca
 #gr()
 
+# ╔═╡ 9b0570eb-e752-4e46-b709-9f50a20b7912
+
+
 # ╔═╡ cb45d403-ecb0-4929-bab2-915d3d6498a4
 leftright(a, b; width=600) = """
 <style>
@@ -326,16 +374,29 @@ leftright(a, b; width=600) = """
 </table>
 """ |> HTML
 
+# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
+if @isdefined MCL_df
+	
+	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
+	unique_customers = MCL_df[!,:CUST_ID] |> unique |> length
+	unique_emails = MCL_df[!,:CUST_EMAIL_ADDR] |> unique |> length
+	
+	leftright(
+		md"unique customer ids: $unique_customers",
+		md"unique emails: $unique_emails"
+	)
+end
+
 # ╔═╡ 2945046d-0107-4c6a-b65a-1a2a804d79b9
 md"""
 ## Customer Targeting
+$(leftright(
+md"Use Quantiles? $(@bind use_quantiles CheckBox(default=false))",
+md"Quantile Range $(@bind low_q NumberField(0:100,default=50))% - $(@bind high_q NumberField(0:100,default=70))%"
+))
 !!! note
 	Targeting and savings estimation methods used based on Ahmed's [savings_calculations.R](https://icfonline-my.sharepoint.com/:u:/g/personal/33648_icf_com/EYXit2vgTO9HjXsu6ShU4MgBF4SUhPkqU16NRtKQS8eQCg?e=cnH78I) script
 
-$(leftright(
-	md"Use Quantiles? $(@bind use_quantiles CheckBox(default=true))",
-	md"Quantile Range $(@bind low_q NumberField(0:100,default=50))% - $(@bind high_q NumberField(0:100,default=70))%"
-	))
 """
 
 # ╔═╡ 92877da7-6f6d-4ba0-ba18-4763214564b8
@@ -377,17 +438,86 @@ if (@isdefined MCL_targets) && !isempty(savings_table_csv["data"])
 	MCL_savings[!,:savings] = @with MCL_savings begin
 		:swh .+ :wop .+ :tstat .+ :tcv .+ :spout
 	end
+	
+	MCL_savings[!,:savings] = MCL_savings[!,:savings]
 end
 
 # ╔═╡ ed36453a-fda8-45d5-93f8-7828be779317
 if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
-	histogram(
-		MCL_savings[!,"savings"], 
-		title="Old Estimated Therms Savings Histogram",
-		labels=permutedims(select(MCL_savings, "savings") |> names),
+	
+	StatsPlots.histogram(
+		coalesce.(MCL_savings[!,:savings], 0),
+		title="Estimated Therms Savings Histogram",
+		labels="savings",
 		size=(800,400), 
 	)
 end
+
+# ╔═╡ d2a6550a-a9aa-45fc-9435-92b4d9e016ab
+if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
+	savings = MCL_savings[!,:savings] |> sum 
+	
+	describe(MCL_savings,
+		[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
+		sum => :sum,
+		cols=["savings"]
+	)
+end
+
+# ╔═╡ a1291c48-8efa-4a0b-b181-3fd8bff08bce
+if @isdefined MCL_new_savings
+	@where(MCL_new_savings, :Tier .== 1, :Group .== "AB") |> eachrow |> length
+	
+	leftright(md"""
+		### Tier I
+		- AB customer count = $(s[:T2AB][:customer_count])
+		- AB address count = $(s[:T2AB][:address_count])
+		- AB email count = $(s[:T2AB][:email_count])
+		- AB mean savings = $(s[:T2AB][:savings_mean])
+		- AB total savings = $(s[:T2AB][:savings_total])
+
+		
+		- A customer count = $(s[:T2A][:customer_count])
+		- A address count = $(s[:T2A][:address_count])
+		- A email count = $(s[:T2A][:email_count])
+		- A mean savings = $(s[:T2A][:savings_mean])
+		- A total savings = $(s[:T2A][:savings_total])
+
+
+		- B customer count = $(s[:T2B][:customer_count])
+		- B address count = $(s[:T2B][:address_count])
+		- B email count = $(s[:T2B][:email_count])
+		- B mean savings = $(s[:T2B][:savings_mean])
+		- B total savings = $(s[:T2B][:savings_total])
+		""",
+		
+		md"""
+		### Tier II
+		- AB customer count = $(s[:T1AB][:customer_count])
+		- AB address count = $(s[:T1AB][:address_count])
+		- AB email count = $(s[:T1AB][:email_count])
+		- AB mean savings = $(s[:T1AB][:savings_mean])
+		- AB total savings = $(s[:T1AB][:savings_total])
+
+		
+		- A customer count = $(s[:T1A][:customer_count])
+		- A address count = $(s[:T1A][:address_count])
+		- A email count = $(s[:T1A][:email_count])
+		- A mean savings = $(s[:T1A][:savings_mean])
+		- A total savings = $(s[:T1A][:savings_total])
+
+
+		- B customer count = $(s[:T1B][:customer_count])
+		- B address count = $(s[:T1B][:address_count])
+		- B email count = $(s[:T1B][:email_count])
+		- B mean savings = $(s[:T1B][:savings_mean])
+		- B total savings = $(s[:T1B][:savings_total])
+		""",
+	)
+end
+
+# ╔═╡ 601127cb-6a0e-448c-9a6e-7284234f449b
+
 
 # ╔═╡ df2dddb0-1638-46aa-a193-50cbae6ebab4
 updown(a, b; width=nothing) = """
@@ -401,29 +531,10 @@ updown(a, b; width=nothing) = """
 </table>
 """ |> HTML
 
-# ╔═╡ 11fd20c1-a9c8-4467-a65f-990015da018e
-if @isdefined MCL_df
-	unique_projects = MCL_df[!,:GNN_ID] |> unique |> length
-	unique_customers = MCL_df[!,:CUST_ID] |> unique |> length
-	unique_emails = MCL_df[!,:CUST_EMAIL_ADDR] |> unique |> length
-	unique_addresses = MCL_df[!,:SVC_ADDR1] |> unique |> length
-	
-	updown(
-		leftright(
-			md"unique projects: $unique_projects",
-			md"unique customers: $unique_customers"
-		),
-		leftright(
-			md"unique emails: $unique_emails",
-			md"unique service addresses: $unique_addresses"
-		),
-	)
-end
-
 # ╔═╡ 8764c5aa-3472-4a7e-9212-9af62d3f902e
 updown(
-	md"Slim down this dataset using :Fieldname values? $(@bind slim_df CheckBox(default=false))", 
 	md"Choose a csv file with column names to keep: $(@bind keep_cols_csv FilePicker())",
+	md"Slim down this dataset using :Fieldname values? $(@bind slim_df CheckBox(default=false))", 
 )
 
 # ╔═╡ d7598973-beb7-44b1-835b-3527fdc70668
@@ -437,42 +548,14 @@ if (@isdefined MCL_df) && slim_df
 	select!(MCL_df, intersect(MCL_keepcols, MCL_df |> names))
 end
 
-# ╔═╡ d2a6550a-a9aa-45fc-9435-92b4d9e016ab
-if (@isdefined MCL_savings) && ("savings" in MCL_savings |> names)
-	savings = MCL_savings[!,:savings] |> sum 
-	
-	updown(
-		describe(MCL_savings,
-			[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
-			sum => :sum,
-			cols=["savings"]),
-		Resource("https://mashable-evaporation-wordpress.s3.amazonaws.com/2013/07/Dr.-Who.gif")
-	)
-end
-
 # ╔═╡ 5066ed9a-32ae-4b25-b065-c50a81df59f6
-if @isdefined MCL_grouped_savings
+if @isdefined MCL_new_savings
 	updown(md"""
-	Note: this looks like a [Pareto distribution](https://en.wikipedia.org/wiki/Pareto_distribution)	$(Resource(https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Probability_density_function_of_Pareto_distribution.svg/1920px-Probability_density_function_of_Pareto_distribution.svg.png))
+	!!! note
+		This looks like a [Pareto distribution](https://en.wikipedia.org/wiki/Pareto_distribution)
 	""",
-Resource("https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Probability_density_function_of_Pareto_distribution.svg/1920px-Probability_density_function_of_Pareto_distribution.svg.png", :width => 500))
-end
-
-# ╔═╡ b7461faf-dc28-4f62-a43a-08870c0d83a1
-MCL_grouped_savings_desc = if (@isdefined MCL_grouped_savings) && (MCL_grouped_savings isa DataFrame)
-	updown(
-		
-		describe(
-			MCL_grouped_savings,
-			[ :mean, :min, :median, :max, :nmissing, :eltype ]...,
-			sum => :sum,
-			cols=[:Tstat_Therms_Saved, :WH_Therms_Saved, :Combined_Therms_Savings, :Group]
-		),	
-		
-		Resource("https://media1.tenor.com/images/875a4c4adac5f86913d5ab919b55bf80/tenor.gif?itemid=20821636")
-	)
-	
-end
+	Resource("https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Probability_density_function_of_Pareto_distribution.svg/1920px-Probability_density_function_of_Pareto_distribution.svg.png", :width => 500))
+end;
 
 # ╔═╡ Cell order:
 # ╟─868cd960-ba5b-11eb-2c92-255e7e10725e
@@ -489,20 +572,28 @@ end
 # ╟─a4cda47d-907b-4510-b68e-63b87d78ae02
 # ╟─aa5bffb1-f412-4d52-b132-379b0a014c4b
 # ╟─a71665f4-0951-44f7-969e-d933bed20f62
-# ╟─db159774-fe16-45ed-8f34-afbd68150f54
+# ╠═db159774-fe16-45ed-8f34-afbd68150f54
 # ╟─ed36453a-fda8-45d5-93f8-7828be779317
 # ╟─d2a6550a-a9aa-45fc-9435-92b4d9e016ab
-# ╟─0fad5851-fe23-4895-9194-dd1625c9abe5
-# ╟─6c53ca70-b96f-4e0d-862f-45b335092556
-# ╟─7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
-# ╠═4cf2930e-7427-490e-a525-cec1d3d0ae09
-# ╠═18eae425-5aed-4149-9705-9795f949f789
+# ╟─22ce9c38-2a4a-49cf-8f8c-5dfcfee8788f
+# ╟─70bf7cd4-4f22-4757-88ee-56b9ae90be04
+# ╠═0fad5851-fe23-4895-9194-dd1625c9abe5
+# ╠═cc369e9c-0af1-455c-aa20-b3d7927e0e18
+# ╠═77dba1dd-c22a-48c7-a1cc-0d95c62b249f
+# ╠═6c53ca70-b96f-4e0d-862f-45b335092556
+# ╠═7397ca3a-7a1e-425a-ac09-8f30e49bd1ec
+# ╠═0be5ddfc-079b-47d4-82de-439ad9c4ec39
+# ╟─b7461faf-dc28-4f62-a43a-08870c0d83a1
 # ╟─bc9a3e3a-1bf7-460d-b3b1-a30228e2e7fa
 # ╟─5066ed9a-32ae-4b25-b065-c50a81df59f6
-# ╟─b7461faf-dc28-4f62-a43a-08870c0d83a1
-# ╟─725ece46-1b76-4f28-8cd7-4856dc892b40
+# ╟─5d5c58b6-1a57-4111-b1cf-d1c9e50e9e89
+# ╟─13fd7bbd-d78b-4b08-ad5d-2425fb0c4ecd
 # ╟─658132e8-9cb1-4e02-a4d0-3970d8180bad
+# ╟─a1291c48-8efa-4a0b-b181-3fd8bff08bce
+# ╠═947d8047-0b67-4e35-9780-c0945ddb8e48
 # ╟─3d2b922c-33d2-46e9-9729-6087cd0d3bcb
+# ╟─92603658-e437-49ef-8136-3c76b064ca67
+# ╟─69959e4e-83fe-47b2-8c6e-1d75da91b19d
 # ╟─2a739049-a2d1-47e1-b52b-0911e352a05f
 # ╟─33e60c2d-3b1b-4ed8-9ec4-a0b574aff867
 # ╟─bde8d1eb-9c04-47e9-aa2b-12a3c844e19c
@@ -511,5 +602,7 @@ end
 # ╠═00c24ce5-62f0-4503-8204-b97eba3c1aa7
 # ╠═a0ac9f42-72b6-449f-891e-dedaadb19939
 # ╠═cdf4f394-da81-4bfa-ba55-be6a8bb6e3ca
+# ╠═9b0570eb-e752-4e46-b709-9f50a20b7912
 # ╟─cb45d403-ecb0-4929-bab2-915d3d6498a4
+# ╠═601127cb-6a0e-448c-9a6e-7284234f449b
 # ╟─df2dddb0-1638-46aa-a193-50cbae6ebab4
